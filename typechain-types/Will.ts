@@ -160,8 +160,8 @@ export interface WillInterface extends utils.Interface {
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
     "RoleRevoked(bytes32,address,address)": EventFragment;
-    "SharesWithdrawn(uint256,uint256,uint256,uint256,address)": EventFragment;
-    "WillExecuted(uint256)": EventFragment;
+    "SharesWithdrawn(uint256,uint256,uint256,address)": EventFragment;
+    "WillExecuted(bool,uint256,address,uint256,uint256,uint256)": EventFragment;
     "WillReport(address,address,uint256,bool,uint256,uint256,uint256,uint256)": EventFragment;
   };
 
@@ -214,9 +214,8 @@ export type RoleRevokedEvent = TypedEvent<
 export type RoleRevokedEventFilter = TypedEventFilter<RoleRevokedEvent>;
 
 export type SharesWithdrawnEvent = TypedEvent<
-  [BigNumber, BigNumber, BigNumber, BigNumber, string],
+  [BigNumber, BigNumber, BigNumber, string],
   {
-    _time: BigNumber;
     _totalAmount: BigNumber;
     _lawyerFee: BigNumber;
     _ethPerPayee: BigNumber;
@@ -226,7 +225,17 @@ export type SharesWithdrawnEvent = TypedEvent<
 
 export type SharesWithdrawnEventFilter = TypedEventFilter<SharesWithdrawnEvent>;
 
-export type WillExecutedEvent = TypedEvent<[BigNumber], { _time: BigNumber }>;
+export type WillExecutedEvent = TypedEvent<
+  [boolean, BigNumber, string, BigNumber, BigNumber, BigNumber],
+  {
+    _exec: boolean;
+    _time: BigNumber;
+    _lawyer: string;
+    _unlockTime: BigNumber;
+    _totalBalance: BigNumber;
+    _numberOfPayees: BigNumber;
+  }
+>;
 
 export type WillExecutedEventFilter = TypedEventFilter<WillExecutedEvent>;
 
@@ -570,23 +579,35 @@ export interface Will extends BaseContract {
       sender?: string | null
     ): RoleRevokedEventFilter;
 
-    "SharesWithdrawn(uint256,uint256,uint256,uint256,address)"(
-      _time?: null,
+    "SharesWithdrawn(uint256,uint256,uint256,address)"(
       _totalAmount?: null,
       _lawyerFee?: null,
       _ethPerPayee?: null,
       _caller?: null
     ): SharesWithdrawnEventFilter;
     SharesWithdrawn(
-      _time?: null,
       _totalAmount?: null,
       _lawyerFee?: null,
       _ethPerPayee?: null,
       _caller?: null
     ): SharesWithdrawnEventFilter;
 
-    "WillExecuted(uint256)"(_time?: null): WillExecutedEventFilter;
-    WillExecuted(_time?: null): WillExecutedEventFilter;
+    "WillExecuted(bool,uint256,address,uint256,uint256,uint256)"(
+      _exec?: null,
+      _time?: null,
+      _lawyer?: null,
+      _unlockTime?: null,
+      _totalBalance?: null,
+      _numberOfPayees?: null
+    ): WillExecutedEventFilter;
+    WillExecuted(
+      _exec?: null,
+      _time?: null,
+      _lawyer?: null,
+      _unlockTime?: null,
+      _totalBalance?: null,
+      _numberOfPayees?: null
+    ): WillExecutedEventFilter;
 
     "WillReport(address,address,uint256,bool,uint256,uint256,uint256,uint256)"(
       _owner?: null,
