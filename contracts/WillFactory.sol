@@ -22,7 +22,7 @@ contract WillFactory {
 
         require(_lockTime != 0, "The minimum time is 1 day");
         require(_lockTime < 366 days, "The maximun time is 365 days");
-        Will will = new Will(msg.sender, _lawyer, _lockTime);
+        Will will = new Will(payable(msg.sender), _lawyer, _lockTime);
         willOwners[msg.sender] = address(will);
         emit WillCreated(msg.sender, willOwners[msg.sender]);
         return willOwners[msg.sender];

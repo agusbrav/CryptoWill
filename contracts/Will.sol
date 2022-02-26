@@ -10,7 +10,7 @@ import "hardhat/console.sol";
  */
 contract Will is AccessControl, ReentrancyGuard {
     struct Manuscript {
-        address testator;
+        address payable testator;
         address payable lawyer;
         address payable[] payees;
         uint256 waitTime;
@@ -24,18 +24,10 @@ contract Will is AccessControl, ReentrancyGuard {
     uint256 public lawyerFee;
     uint256 public correspondingTokens;
     uint256 public expireDate;
-    event WillExecuted(uint256 _time); // Do i need to send the will address? more info about
-    event SharesWithdrawn(
-        uint256 _time,
-        uint256 _totalAmount,
-        uint256 _lawyerFee,
-        uint256 _ethPerPayee,
-        address _caller
-    );
-    event ChangedLawyer(address _oldLawyer, address payable _newLawyer);
+
     event WillReport(
         address _owner,
-        address payable _lawyer,
+        address _lawyer,
         uint256 _unlockTime,
         bool _withdrawAvailable,
         uint256 _totalBalance,
@@ -43,11 +35,26 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _lawyerFee,
         uint256 _expireDate
     );
+    event WillExecuted(
+        bool _exec,
+        uint256 _time,
+        address _lawyer,
+        uint256 _unlockTime,
+        uint256 _totalBalance,
+        uint256 _numberOfPayees
+    );
+    event SharesWithdrawn(
+        uint256 _totalAmount,
+        uint256 _lawyerFee,
+        uint256 _ethPerPayee,
+        address _caller
+    );
     event NewPayeeAdded(address _newPayee);
     event ApprovedPayees(address _payees);
+    event ChangedLawyer(address _oldLawyer, address _newLawyer);
 
     constructor(
-        address _testator,
+        address payable _testator,
         address payable _lawyer,
         uint256 _waitTime
     ) {
@@ -73,40 +80,18 @@ contract Will is AccessControl, ReentrancyGuard {
      * Should probably manage this status throug events
      */
     function willStatus() public activeWill {
-        uint256 remainingTime;
-        if (
-            willManuscript.executed == true &&
-            block.timestamp < willManuscript.unlockTime
-        ) {
-            remainingTime = willManuscript.unlockTime - block.timestamp;
-            emit WillReport(
-                willManuscript.testator,
-                willManuscript.lawyer,
-                willManuscript.unlockTime,
-                false,
-                address(this).balance,
-                correspondingTokens,
-                lawyerFee,
-                expireDate
-            );
-        }
-        if (
-            willManuscript.executed == true &&
-            block.timestamp > willManuscript.unlockTime
-        ) {
-            emit WillReport(
-                willManuscript.testator,
-                willManuscript.lawyer,
-                willManuscript.unlockTime,
-                true,
-                address(this).balance,
-                correspondingTokens,
-                lawyerFee,
-                expireDate
-            );
-            for (uint256 i = 0; i < willManuscript.payees.length; i++) {
-                emit ApprovedPayees(willManuscript.payees[i]);
-            }
+        emit WillReport(
+            willManuscript.testator,
+            willManuscript.lawyer,
+            willManuscript.unlockTime,
+            willManuscript.executed,
+            address(this).balance,
+            correspondingTokens,
+            lawyerFee,
+            expireDate
+        );
+        for (uint256 i = 0; i < willManuscript.payees.length; i++) {
+            emit ApprovedPayees(willManuscript.payees[i]);
         }
     }
 
@@ -129,7 +114,7 @@ contract Will is AccessControl, ReentrancyGuard {
             emit NewPayeeAdded(_payeesAdd[i]);
         }
         updateAllocations();
-        expireDate = 7300 days; ///Set up 20 years from the setWill for the Will to expire and reclaim funds
+        expireDate = block.timestamp + 7300 days; ///Set up 20 years from the setWill for the Will to expire and reclaim funds
         emit WillReport(
             willManuscript.testator,
             willManuscript.lawyer,
@@ -150,15 +135,18 @@ contract Will is AccessControl, ReentrancyGuard {
      * Need to calculate the division between the payees and the lawyer fee for the contract execution
      */
     function executeWill() public onlyRole(LAWYER) activeWill {
-        require(
-            willManuscript.payees.length > 0,
-            "There are no payees declared"
-        );
         require(willManuscript.executed == false, "Already has been executed");
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
         updateAllocations();
-        emit WillExecuted(block.timestamp);
+        emit WillExecuted(
+            willManuscript.executed,
+            willManuscript.waitTime,
+            willManuscript.lawyer,
+            willManuscript.unlockTime,
+            address(this).balance,
+            willManuscript.payees.length
+        );
     }
 
     /// The payee can withdraw his part when the will is executed and the locked time has passed.
@@ -168,27 +156,24 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
-        for (uint256 i = 0; i < willManuscript.payees.length; i++)
-            willManuscript.payees[i].call{value: correspondingTokens}("");
         emit SharesWithdrawn(
-            block.timestamp,
             address(this).balance,
             lawyerFee,
             correspondingTokens,
             msg.sender
         );
+        for (uint256 i = 0; i < willManuscript.payees.length; i++)
+            willManuscript.payees[i].call{value: correspondingTokens}("");
         selfdestruct(willManuscript.lawyer);
     }
 
     function resetWill(address payable _newLawyer) public onlyRole(OWNER) {
         willManuscript.executed = false;
+        willManuscript.unlockTime = 0;
         replaceLawyer(_newLawyer);
     }
 
-    function replaceLawyer(address payable _newLawyer)
-        internal
-        onlyRole(OWNER)
-    {
+    function replaceLawyer(address payable _newLawyer) private {
         address _oldLawyer = willManuscript.lawyer;
         willManuscript.lawyer = _newLawyer;
         revokeRole(LAWYER, _oldLawyer);
@@ -197,7 +182,7 @@ contract Will is AccessControl, ReentrancyGuard {
     }
 
     ///Function to reclaim the balance
-    function updateAllocations() internal {
+    function updateAllocations() private {
         uint256 dividends;
         dividends = willManuscript.payees.length;
         lawyerFee = address(this).balance / 10;
@@ -209,6 +194,6 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= expireDate,
             "Expiracy date hasnt passed yet"
         );
-        willManuscript.testator.call{value: address(this).balance}("");
+        selfdestruct(willManuscript.testator);
     }
 }
