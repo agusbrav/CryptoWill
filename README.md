@@ -21,7 +21,7 @@ This is my first time working with solidity and smart contracts :)
 
 The project is currently a work in progress. Will Factory and will contract basic functions are done and tested.
 
-## Next Steps
+## Roadmap
 
 * Reorganize and update README.
 * Adding ERC20 and ERC721 support to the contract.
