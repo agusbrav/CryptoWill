@@ -5,10 +5,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 
 /**
- * @dev The will contract need to be initializaed with the payees
+ * Once created, every Will contract will have its balance and members. 
  * The creation of the contract from "WillFactory" sets up the owner and lawyer roles
  */
 contract Will is AccessControl, ReentrancyGuard {
+    /// This struct has the useful information of the contract (members, waitTime, if its already executed bool and unlockTime)
     struct Manuscript {
         address payable testator;
         address payable lawyer;
@@ -24,7 +25,10 @@ contract Will is AccessControl, ReentrancyGuard {
     uint256 public lawyerFee;
     uint256 public correspondingTokens;
     uint256 public expireDate;
-
+    /**
+     * WillReport event trigers all info from the manuscript
+     * Can be called with WillStatus function or its called automatically after setting up the will
+     */ 
     event WillReport(
         address _owner,
         address _lawyer,
@@ -35,6 +39,10 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _lawyerFee,
         uint256 _expireDate
     );
+    /**
+     * WillExecuted event will be emitted once the corresponding lawyer signer calls
+     * the executeWill function to start counting looked time in order to claim the assets
+     */ 
     event WillExecuted(
         bool _exec,
         uint256 _time,
@@ -43,16 +51,30 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _totalBalance,
         uint256 _numberOfPayees
     );
+        /**
+     * Once function withdrawShares is called and the conditions are met:
+     * the executeWill function has been executed and unlockTime has passed.
+     * Any payee member in the contract will be able to call withdrawShares to claim its assets for everyone
+     * and destroy the Will. This event its emmited once and after that the contract will be destroyed.
+     */ 
     event SharesWithdrawn(
         uint256 _totalAmount,
         uint256 _lawyerFee,
         uint256 _ethPerPayee,
         address _caller
     );
+    ///Event emited for each new payee setted up by the owner in the setWill function
     event NewPayeeAdded(address _newPayee);
+    ///Event emited for each new payee setted up by the owner in the setWill function
     event ApprovedPayees(address _payees);
+    ///Event emited for each new payee setted up by the owner in the setWill function
     event ChangedLawyer(address _oldLawyer, address _newLawyer);
 
+/**
+ * The constructor sets up the roles and roles admin 
+ * This garantees that the main roles are set up in the creation of the smart contract
+ * Once created you can add payees and change the lawyer but only the owner has this privileges
+ */
     constructor(
         address payable _testator,
         address payable _lawyer,
@@ -79,7 +101,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /** Checks the current payees, testator, lawyer, execution, amount and lock time
      * Should probably manage this status throug events
      */
-    function willStatus() public activeWill {
+    function willStatus() public {
         emit WillReport(
             willManuscript.testator,
             willManuscript.lawyer,
@@ -111,20 +133,10 @@ contract Will is AccessControl, ReentrancyGuard {
             );
             grantRole(PAYEE, _payeesAdd[i]);
             willManuscript.payees.push(_payeesAdd[i]);
-            emit NewPayeeAdded(_payeesAdd[i]);
         }
         updateAllocations();
         expireDate = block.timestamp + 7300 days; ///Set up 20 years from the setWill for the Will to expire and reclaim funds
-        emit WillReport(
-            willManuscript.testator,
-            willManuscript.lawyer,
-            willManuscript.unlockTime,
-            false,
-            address(this).balance,
-            correspondingTokens,
-            lawyerFee,
-            expireDate
-        );
+        willStatus();
     }
 
     /**
