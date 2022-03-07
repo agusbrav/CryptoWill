@@ -20,7 +20,9 @@ The project is currently a work in progress. Will Factory and will contract basi
 
 #### Next Steps
 
-Right now im aiming to add the ERC20 and ERC721 support to the contract! 
+* Adding ERC20 and ERC721 support to the contract.
+* Adding optional contact info for each payee in the contract (Email).
+* Front end.
 
 
 ##   

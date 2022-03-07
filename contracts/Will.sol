@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 
 /**
- * Once created, every Will contract will have its balance and members. 
- * The creation of the contract from "WillFactory" sets up the owner and lawyer roles
+ * Once created, every Will contract will have its balance and members.
+ * The creation of the contract from "WillFactory" sets up the owner and lawyer roles.
  */
 contract Will is AccessControl, ReentrancyGuard {
     /// This struct has the useful information of the contract (members, waitTime, if its already executed bool and unlockTime)
@@ -25,10 +25,11 @@ contract Will is AccessControl, ReentrancyGuard {
     uint256 public lawyerFee;
     uint256 public correspondingTokens;
     uint256 public expireDate;
+
     /**
      * WillReport event trigers all info from the manuscript
      * Can be called with WillStatus function or its called automatically after setting up the will
-     */ 
+     */
     event WillReport(
         address _owner,
         address _lawyer,
@@ -42,7 +43,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /**
      * WillExecuted event will be emitted once the corresponding lawyer signer calls
      * the executeWill function to start counting looked time in order to claim the assets
-     */ 
+     */
     event WillExecuted(
         bool _exec,
         uint256 _time,
@@ -51,12 +52,12 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _totalBalance,
         uint256 _numberOfPayees
     );
-        /**
+    /**
      * Once function withdrawShares is called and the conditions are met:
      * the executeWill function has been executed and unlockTime has passed.
      * Any payee member in the contract will be able to call withdrawShares to claim its assets for everyone
      * and destroy the Will. This event its emmited once and after that the contract will be destroyed.
-     */ 
+     */
     event SharesWithdrawn(
         uint256 _totalAmount,
         uint256 _lawyerFee,
@@ -70,11 +71,11 @@ contract Will is AccessControl, ReentrancyGuard {
     ///Event emited for each new payee setted up by the owner in the setWill function
     event ChangedLawyer(address _oldLawyer, address _newLawyer);
 
-/**
- * The constructor sets up the roles and roles admin 
- * This garantees that the main roles are set up in the creation of the smart contract
- * Once created you can add payees and change the lawyer but only the owner has this privileges
- */
+    /**
+     * The constructor sets up the roles and roles admin
+     * This garantees that the main roles are set up in the creation of the smart contract
+     * Once created you can add payees and change the lawyer but only the owner has this privileges
+     */
     constructor(
         address payable _testator,
         address payable _lawyer,
@@ -116,7 +117,10 @@ contract Will is AccessControl, ReentrancyGuard {
             emit ApprovedPayees(willManuscript.payees[i]);
         }
     }
-
+    /**
+     * The setWill function works as a configuration for the will members and assets
+     * This function can only be called from the OWNER 
+     */
     function setWill(address payable[] memory _payeesAdd)
         public
         payable
@@ -140,11 +144,9 @@ contract Will is AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev The lawyer designated to a particular will should call this
-     * If the owner of the will is deceased (non checkable haha) the lawyer can execute the will
+     * If the owner of the will is deceased (non checkable yet) the lawyer can execute the will
      * after its executed every payee would need to wait the locked time to withdraw
      * If the owner its not deceased he can revert the executeWill and change the lawyer
-     * Need to calculate the division between the payees and the lawyer fee for the contract execution
      */
     function executeWill() public onlyRole(LAWYER) activeWill {
         require(willManuscript.executed == false, "Already has been executed");
@@ -179,6 +181,10 @@ contract Will is AccessControl, ReentrancyGuard {
         selfdestruct(willManuscript.lawyer);
     }
 
+    /**
+     * If the will has been executed and the owner wants to revert it he can call this function
+     * Also can be called to change the lawyer
+     */
     function resetWill(address payable _newLawyer) public onlyRole(OWNER) {
         willManuscript.executed = false;
         willManuscript.unlockTime = 0;
@@ -193,7 +199,7 @@ contract Will is AccessControl, ReentrancyGuard {
         emit ChangedLawyer(_oldLawyer, _newLawyer);
     }
 
-    ///Function to reclaim the balance
+    ///Updates the dividends of the payees and the lower fee (10% of the total balance)
     function updateAllocations() private {
         uint256 dividends;
         dividends = willManuscript.payees.length;
@@ -201,6 +207,11 @@ contract Will is AccessControl, ReentrancyGuard {
         correspondingTokens = (address(this).balance - lawyerFee) / dividends;
     }
 
+    /**
+     * Function to reclaim the balance from the owner address
+     * After a lock period that its assigned in the last setWill called by the owner (plus 20 years)
+     * This function will transfer all ETH to the OWNER and destroy the will Contract.
+     */
     function reclaimOwnerBalance() public onlyRole(OWNER) {
         require(
             block.timestamp >= expireDate,
