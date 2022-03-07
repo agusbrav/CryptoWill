@@ -1,21 +1,29 @@
 # Crypto Will
-
 <p align="center">
   <img 
-    width="200"
-    height="200"
+    width="100"
+    height="100"
     src="./public/will.png?raw=true"
   >
 </p>
 
 ##  Introduction
 
-Crypto Will its a project that aims to help people to lock assets and configure inheretance members that will be able to claim this funds once the conditions are met.
-Anyone can create a Will from this contract and lock assets safely to be claimed by whoever you want to benefit from your will.
+Crypto Will its a project in development being built in the Ethereum network that aims to help people to lock assets (ETH, ERC20 and ERC721) and configure inheretance members that will be able to claim them once the conditions assigned by its owner are met.
+Anyone can create a Will from this contract and set its assets safely to be claimed by whoever you want to benefit from your will.
 
-This is my first project in solidity.g
+This is my first project in solidity :)
 
 ## Project Status 
 
-Will Factory and will contract basic functions are done and tested.
+The project is currently a work in progress. Will Factory and will contract basic functions are done and tested.
 Next task will be adding ERC20 and ERC721 support.
+
+
+<p align="center">
+  <img 
+    width="100"
+    height="100"
+    src="./public/will.png?raw=true"
+  >
+</p>
