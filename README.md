@@ -5,6 +5,9 @@
     height="100"
     src="./public/will.png?raw=true"
   >
+  <text
+    # Crypto Will
+  >
 </p>
 
 ##  Introduction
@@ -18,14 +21,16 @@ This is my first time working with solidity and smart contracts :)
 
 The project is currently a work in progress. Will Factory and will contract basic functions are done and tested.
 
-#### Next Steps
+## Next Steps
 
 * Adding ERC20 and ERC721 support to the contract.
 * Adding optional contact info for each payee in the contract (e.g. Email/Phone).
 * Front end.
 
 
-##   
+##   Running tests
+
+By running ./runtests.jl the automated tests get executed. With ./runtests.jl --verbose the CLI parameters including the outputs can be displayed. Do note that this script must be run from this repos root directory, since it uses relative paths. Use ./runtests.jl --help to learn how to run individual tests.
 
 <p align="center">
   <img 
