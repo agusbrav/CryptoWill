@@ -72,7 +72,7 @@ describe("CryptoWill tests", () => {
         twentyYearsInSec + currentTime
       );
     });
-    it.only("Calling willStatus to check ApprovedPayees event", async () => {
+    it("Calling willStatus to check ApprovedPayees event", async () => {
       await contract.setWill(
         [payee[1].address, payee[2].address, payee[3].address],
         {

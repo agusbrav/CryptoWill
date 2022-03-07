@@ -18,10 +18,12 @@ This is my first project in solidity :)
 
 The project is currently a work in progress. Will Factory and will contract basic functions are done and tested.
 
-### Next Steps
+#### Next Steps
 
 Right now im aiming to add the ERC20 and ERC721 support to the contract! 
 
+
+##   
 
 <p align="center">
   <img 
