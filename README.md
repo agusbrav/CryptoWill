@@ -3,7 +3,7 @@
   <img 
     width="100"
     height="100"
-    src="./public/will.png?raw=true"
+    src="./images/will.png?raw=true"
   >
   <text
     # Crypto Will
@@ -23,19 +23,7 @@ The project is currently a work in progress. Will Factory and will contract basi
 
 ## Next Steps
 
+* Reorganize and update README.
 * Adding ERC20 and ERC721 support to the contract.
-* Adding optional contact info for each payee in the contract (e.g. Email/Phone).
+* Adding optional contact info for owner, lawyer and payee in the contract (e.g. Email/Phone).
 * Front end.
-
-
-##   Running tests
-
-By running ./runtests.jl the automated tests get executed. With ./runtests.jl --verbose the CLI parameters including the outputs can be displayed. Do note that this script must be run from this repos root directory, since it uses relative paths. Use ./runtests.jl --help to learn how to run individual tests.
-
-<p align="center">
-  <img 
-    width="100"
-    height="100"
-    src="./public/will.png?raw=true"
-  >
-</p>
