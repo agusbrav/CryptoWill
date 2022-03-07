@@ -48,7 +48,7 @@ describe("CryptoWill tests", () => {
     console.log("Will contract deployed to: ", contract.address, " address.");
   });
   describe("Function willStatus from Will contract", () => {
-    it("Calling willStatus to check event", async () => {
+    it("Calling willStatus to check WillReport event", async () => {
       currentTime = Date.now() + 1000;
       await provider.send("evm_setNextBlockTimestamp", [currentTime]);
       await contract.setWill(
@@ -72,6 +72,39 @@ describe("CryptoWill tests", () => {
         twentyYearsInSec + currentTime
       );
     });
+    it.only("Calling willStatus to check ApprovedPayees event", async () => {
+      await contract.setWill(
+        [payee[1].address, payee[2].address, payee[3].address],
+        {
+          value: ethValue,
+        }
+      );
+      await expect(
+        contract.willStatus()
+      ).to.emit
+      (contract, "ApprovedPayees").withArgs
+      (
+        payee[1].address
+      );
+      await expect(
+        contract.willStatus()
+      ).to.emit
+      (contract, "ApprovedPayees").withArgs
+      (
+        payee[2].address
+      );
+      await expect(
+        contract.willStatus()
+      ).to.emit
+      (contract, "ApprovedPayees").withArgs
+      (
+        payee[3].address
+      );
+      console.log("New Approved Payee added: ", payee[1].address);
+      console.log("New Approved Payee added: ", payee[2].address);
+      console.log("New Approved Payee added: ", payee[3].address);
+    });
+    
 });
   describe("Function setWill Tests from Will Contract", () => {
     it("Payee adresses should be different from the lawyer address", async () => {
