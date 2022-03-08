@@ -1,8 +1,8 @@
 # Crypto Will
 <p align="center">
   <img 
-    width="200"
-    height="200"
+    width="300"
+    height="300"
     src="./images/Logo1.png?raw=true"
   >
   <text
