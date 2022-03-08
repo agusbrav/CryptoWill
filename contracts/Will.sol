@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * Once created, every Will contract will have its balance and members.
@@ -18,14 +19,23 @@ contract Will is AccessControl, ReentrancyGuard {
         bool executed;
         uint256 unlockTime;
     }
+
+    struct ERC20Token {
+        string tokenName;
+        IERC20 token;
+        uint256 correspondingTokens;
+    }
+
+    ERC20Token [] public willTokens;
     bytes32 public constant LAWYER = keccak256("LAWYER");
     bytes32 public constant PAYEE = keccak256("PAYEE");
     bytes32 public constant OWNER = keccak256("OWNER");
+    ERC20Token public tokenSt; 
     Manuscript public willManuscript;
     uint256 public lawyerFee;
-    uint256 public correspondingTokens;
+    uint256 public correspondingEth;
     uint256 public expireDate;
-
+    
     /**
      * WillReport event trigers all info from the manuscript
      * Can be called with WillStatus function or its called automatically after setting up the will
@@ -36,7 +46,7 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _unlockTime,
         bool _withdrawAvailable,
         uint256 _totalBalance,
-        uint256 _correspondingTokens,
+        uint256 _correspondingEth,
         uint256 _lawyerFee,
         uint256 _expireDate
     );
@@ -64,13 +74,12 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _ethPerPayee,
         address _caller
     );
-    ///Event emited for each new payee setted up by the owner in the setWill function
-    event NewPayeeAdded(address _newPayee);
-    ///Event emited for each new payee setted up by the owner in the setWill function
+    ///Event emited for each payee setted up by the owner in the willStatus function 
     event ApprovedPayees(address _payees);
-    ///Event emited for each new payee setted up by the owner in the setWill function
+    ///Event emited after resetting the contract with resetWill and changing lawyer.
     event ChangedLawyer(address _oldLawyer, address _newLawyer);
-
+    ///Event emited from willStatus and setWillTokens for each ERC20 token added to this will.
+    event ERC20Supply(string _tokenName, IERC20 _token, uint256 _amount);
     /**
      * The constructor sets up the roles and roles admin
      * This garantees that the main roles are set up in the creation of the smart contract
@@ -109,13 +118,14 @@ contract Will is AccessControl, ReentrancyGuard {
             willManuscript.unlockTime,
             willManuscript.executed,
             address(this).balance,
-            correspondingTokens,
+            correspondingEth,
             lawyerFee,
             expireDate
         );
-        for (uint256 i = 0; i < willManuscript.payees.length; i++) {
+        for (uint256 i = 0; i < willManuscript.payees.length; i++) 
             emit ApprovedPayees(willManuscript.payees[i]);
-        }
+        for (uint256 i = 0; i < willTokens.length; i++) 
+            emit ERC20Supply (willTokens[i].tokenName, willTokens[i].token, IERC20(willTokens[i].token).balanceOf(address(this)));
     }
     /**
      * The setWill function works as a configuration for the will members and assets
@@ -138,9 +148,20 @@ contract Will is AccessControl, ReentrancyGuard {
             grantRole(PAYEE, _payeesAdd[i]);
             willManuscript.payees.push(_payeesAdd[i]);
         }
-        updateAllocations();
+        updateEthAllocations();
         expireDate = block.timestamp + 7300 days; ///Set up 20 years from the setWill for the Will to expire and reclaim funds
         willStatus();
+    }
+
+    function setWillToken (string memory _tokenName, IERC20 _tokenContract, uint _amount) public payable nonReentrant onlyRole(OWNER) {
+        IERC20 paymentToken = IERC20(_tokenContract);
+        require(willTokens.length <= 20,"The max number of tokens is 20");
+        require(paymentToken.allowance(msg.sender, address(this)) >= _amount,"Insuficient Allowance");
+        require(paymentToken.transferFrom(msg.sender,address(this),_amount),"Transfer Failed");
+        tokenSt.tokenName = _tokenName;
+        tokenSt.token = _tokenContract;
+        willTokens.push(tokenSt);
+        emit ERC20Supply (_tokenName, _tokenContract, _amount);
     }
 
     /**
@@ -152,7 +173,7 @@ contract Will is AccessControl, ReentrancyGuard {
         require(willManuscript.executed == false, "Already has been executed");
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
-        updateAllocations();
+        updateEthAllocations();
         emit WillExecuted(
             willManuscript.executed,
             willManuscript.waitTime,
@@ -173,11 +194,14 @@ contract Will is AccessControl, ReentrancyGuard {
         emit SharesWithdrawn(
             address(this).balance,
             lawyerFee,
-            correspondingTokens,
+            correspondingEth,
             msg.sender
         );
         for (uint256 i = 0; i < willManuscript.payees.length; i++)
-            willManuscript.payees[i].call{value: correspondingTokens}("");
+            willManuscript.payees[i].call{value: correspondingEth}("");
+        for (uint256 i = 0; i < willTokens.length; i++) 
+            for (uint256 j = 0; j < willManuscript.payees.length; j++)
+            willTokens[i].token.transfer(willManuscript.payees[i], willTokens[i].correspondingTokens);
         selfdestruct(willManuscript.lawyer);
     }
 
@@ -200,11 +224,11 @@ contract Will is AccessControl, ReentrancyGuard {
     }
 
     ///Updates the dividends of the payees and the lower fee (10% of the total balance)
-    function updateAllocations() private {
+    function updateEthAllocations() private {
         uint256 dividends;
         dividends = willManuscript.payees.length;
         lawyerFee = address(this).balance / 10;
-        correspondingTokens = (address(this).balance - lawyerFee) / dividends;
+        correspondingEth = (address(this).balance - lawyerFee) / dividends;
     }
 
     /**
