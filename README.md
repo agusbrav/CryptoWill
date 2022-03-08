@@ -3,7 +3,7 @@
   <img 
     width="300"
     height="300"
-    src="./images/Logo1.png?raw=true"
+    src="./images/Logo2.png?raw=true"
   >
   <text
     # Crypto Will
