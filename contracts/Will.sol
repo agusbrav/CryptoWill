@@ -20,22 +20,23 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 unlockTime;
     }
 
-    struct ERC20Token {
+    struct WillToken {
         string tokenName;
         IERC20 token;
         uint256 correspondingTokens;
+        uint256 lawyerTokenFee;
     }
 
-    ERC20Token [] public willTokens;
+    WillToken[] public willTokens;
     bytes32 public constant LAWYER = keccak256("LAWYER");
     bytes32 public constant PAYEE = keccak256("PAYEE");
     bytes32 public constant OWNER = keccak256("OWNER");
-    ERC20Token public tokenSt; 
+    WillToken public tokenSt;
     Manuscript public willManuscript;
     uint256 public lawyerFee;
     uint256 public correspondingEth;
     uint256 public expireDate;
-    
+
     /**
      * WillReport event trigers all info from the manuscript
      * Can be called with WillStatus function or its called automatically after setting up the will
@@ -74,12 +75,13 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _ethPerPayee,
         address _caller
     );
-    ///Event emited for each payee setted up by the owner in the willStatus function 
+    ///Event emited for each payee setted up by the owner in the willStatus function
     event ApprovedPayees(address _payees);
     ///Event emited after resetting the contract with resetWill and changing lawyer.
     event ChangedLawyer(address _oldLawyer, address _newLawyer);
-    ///Event emited from willStatus and setWillTokens for each ERC20 token added to this will.
-    event ERC20Supply(string _tokenName, IERC20 _token, uint256 _amount);
+    ///Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
+    event ERC20Supplied(string _tokenName, IERC20 _token, uint256 _amount);
+
     /**
      * The constructor sets up the roles and roles admin
      * This garantees that the main roles are set up in the creation of the smart contract
@@ -98,6 +100,7 @@ contract Will is AccessControl, ReentrancyGuard {
         _setupRole(LAWYER, _lawyer);
         _setRoleAdmin(LAWYER, OWNER);
         _setRoleAdmin(PAYEE, OWNER);
+        expireDate = block.timestamp + 7300 days; ///Set up 20 years from creation of the Will contract.
     }
 
     modifier activeWill() {
@@ -122,18 +125,24 @@ contract Will is AccessControl, ReentrancyGuard {
             lawyerFee,
             expireDate
         );
-        for (uint256 i = 0; i < willManuscript.payees.length; i++) 
+        for (uint256 i = 0; i < willManuscript.payees.length; i++)
             emit ApprovedPayees(willManuscript.payees[i]);
-        for (uint256 i = 0; i < willTokens.length; i++) 
-            emit ERC20Supply (willTokens[i].tokenName, willTokens[i].token, IERC20(willTokens[i].token).balanceOf(address(this)));
+        for (uint256 i = 0; i < willTokens.length; i++)
+            emit ERC20Supplied(
+                willTokens[i].tokenName,
+                willTokens[i].token,
+                IERC20(willTokens[i].token).balanceOf(address(this))
+            );
     }
+
     /**
      * The setWill function works as a configuration for the will members and assets
-     * This function can only be called from the OWNER 
+     * This function can only be called from the OWNER
      */
     function setWill(address payable[] memory _payeesAdd)
         public
         payable
+        nonReentrant
         onlyRole(OWNER)
     {
         require(
@@ -149,19 +158,32 @@ contract Will is AccessControl, ReentrancyGuard {
             willManuscript.payees.push(_payeesAdd[i]);
         }
         updateEthAllocations();
-        expireDate = block.timestamp + 7300 days; ///Set up 20 years from the setWill for the Will to expire and reclaim funds
+        if (willTokens.length > 0) updateTokensAllocations();
         willStatus();
     }
 
-    function setWillToken (string memory _tokenName, IERC20 _tokenContract, uint _amount) public payable nonReentrant onlyRole(OWNER) {
+    function setWillToken(
+        string memory _tokenName,
+        IERC20 _tokenContract,
+        uint256 _amount
+    ) public payable nonReentrant onlyRole(OWNER) {
         IERC20 paymentToken = IERC20(_tokenContract);
-        require(willTokens.length <= 20,"The max number of tokens is 20");
-        require(paymentToken.allowance(msg.sender, address(this)) >= _amount,"Insuficient Allowance");
-        require(paymentToken.transferFrom(msg.sender,address(this),_amount),"Transfer Failed");
+        require(willTokens.length <= 20, "The max number of tokens is 20");
+        require(
+            paymentToken.allowance(msg.sender, address(this)) >= _amount,
+            "Insuficient Allowance"
+        );
+        require(
+            paymentToken.transferFrom(msg.sender, address(this), _amount),
+            "Transfer Failed"
+        );
         tokenSt.tokenName = _tokenName;
         tokenSt.token = _tokenContract;
         willTokens.push(tokenSt);
-        emit ERC20Supply (_tokenName, _tokenContract, _amount);
+        updateSingleTokenAllocations(
+            willTokens.length - 1
+        );
+        emit ERC20Supplied(_tokenName, _tokenContract, _amount);
     }
 
     /**
@@ -173,7 +195,6 @@ contract Will is AccessControl, ReentrancyGuard {
         require(willManuscript.executed == false, "Already has been executed");
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
-        updateEthAllocations();
         emit WillExecuted(
             willManuscript.executed,
             willManuscript.waitTime,
@@ -199,9 +220,17 @@ contract Will is AccessControl, ReentrancyGuard {
         );
         for (uint256 i = 0; i < willManuscript.payees.length; i++)
             willManuscript.payees[i].call{value: correspondingEth}("");
-        for (uint256 i = 0; i < willTokens.length; i++) 
-            for (uint256 j = 0; j < willManuscript.payees.length; j++)
-            willTokens[i].token.transfer(willManuscript.payees[i], willTokens[i].correspondingTokens);
+        for (uint256 i = 0; i < willTokens.length; i++)
+            for (uint256 j = 0; j < willManuscript.payees.length; j++) {
+                willTokens[i].token.transfer(
+                    willManuscript.payees[j],
+                    willTokens[i].correspondingTokens
+                );
+                willTokens[i].token.transfer(
+                    willManuscript.lawyer,
+                    willTokens[i].lawyerTokenFee
+                );
+            }
         selfdestruct(willManuscript.lawyer);
     }
 
@@ -223,12 +252,38 @@ contract Will is AccessControl, ReentrancyGuard {
         emit ChangedLawyer(_oldLawyer, _newLawyer);
     }
 
-    ///Updates the dividends of the payees and the lower fee (10% of the total balance)
+    ///Updates the dividends of the payees and the lawer fee (10% of the total balance)
     function updateEthAllocations() private {
-        uint256 dividends;
-        dividends = willManuscript.payees.length;
         lawyerFee = address(this).balance / 10;
-        correspondingEth = (address(this).balance - lawyerFee) / dividends;
+        correspondingEth =
+            (address(this).balance - lawyerFee) /
+            willManuscript.payees.length;
+    }
+
+    ///Updates the dividends of the payees and the lower fee (10% of the total balance)
+    function updateSingleTokenAllocations(uint256 _index) private {
+        uint256 tokenBalanace;
+        tokenBalanace = IERC20(willTokens[_index].token).balanceOf(
+            address(this)
+        );
+        willTokens[_index].lawyerTokenFee = tokenBalanace / 10;
+        willTokens[_index].correspondingTokens =
+            (tokenBalanace - lawyerFee) /
+            willManuscript.payees.length;
+    }
+
+    ///Updates the dividends of the payees and the lower fee (10% of the total balance)
+    function updateTokensAllocations() private {
+        uint256 tokenBalanace;
+        for (uint256 i = 0; i < willTokens.length; i++) {
+            tokenBalanace = IERC20(willTokens[i].token).balanceOf(
+                address(this)
+            );
+            willTokens[i].lawyerTokenFee = tokenBalanace / 10;
+            willTokens[i].correspondingTokens =
+                (tokenBalanace - lawyerFee) /
+                willManuscript.payees.length;
+        }
     }
 
     /**
@@ -241,6 +296,11 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= expireDate,
             "Expiracy date hasnt passed yet"
         );
+        for (uint256 i = 0; i < willTokens.length; i++)
+            willTokens[i].token.transfer(
+                willManuscript.testator,
+                IERC20(willTokens[i].token).balanceOf(address(this))
+            );
         selfdestruct(willManuscript.testator);
     }
 }
