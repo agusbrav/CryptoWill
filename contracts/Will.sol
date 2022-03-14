@@ -2,142 +2,141 @@
 pragma solidity ^0.8.10;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 /**
- * Once created, every Will contract will have its balance and members.
- * The creation of the contract from "WillFactory" sets up the owner and lawyer roles.
+ * @title Will Contract for Tokens and NFTs 
+ * @author https://github.com/agusbrav
+ * @dev Once created, every Will contract will have its balance and members.
+ * The creation of the contract from "WillFactory" sets up the owner and executor roles.
  */
 contract Will is AccessControl, ReentrancyGuard {
-    /// This struct has the useful information of the contract (members, waitTime, if its already executed bool and unlockTime)
+    // This struct has the useful information of the contract
     struct Manuscript {
-        address payable testator;
-        address payable lawyer;
-        address payable[] payees;
-        uint256 waitTime;
+        address testator;
+        address executor;
+        address[] payees;
         bool executed;
+        uint256 waitTime;
         uint256 unlockTime;
     }
-
+    // Define the scruct that will be used to know the corresponding equity per token (Divided in equal parts)
     struct WillToken {
-        string tokenName;
         IERC20 token;
         uint256 correspondingTokens;
-        uint256 lawyerTokenFee;
+    }
+    struct WillNFT {
+        IERC721 nft;
+        uint256 id;
     }
 
-    WillToken[] public willTokens;
-    bytes32 public constant LAWYER = keccak256("LAWYER");
+    bytes32 public constant EXECUTOR = keccak256("EXECUTOR");
     bytes32 public constant PAYEE = keccak256("PAYEE");
     bytes32 public constant OWNER = keccak256("OWNER");
-    WillToken public tokenSt;
-    Manuscript public willManuscript;
-    uint256 public lawyerFee;
+    mapping(address => WillNFT[]) public willNFTs;
+    uint256 public executorFee;
     uint256 public correspondingEth;
-    uint256 public expireDate;
+    WillToken[] public willTokens;
+    Manuscript public willManuscript;
 
     /**
-     * WillReport event trigers all info from the manuscript
+     * @dev WillReport event trigers all info from the manuscript
      * Can be called with WillStatus function or its called automatically after setting up the will
      */
     event WillReport(
         address _owner,
-        address _lawyer,
+        address _executor,
         uint256 _unlockTime,
         bool _withdrawAvailable,
         uint256 _totalBalance,
         uint256 _correspondingEth,
-        uint256 _lawyerFee,
-        uint256 _expireDate
+        uint256 _executorFee
     );
     /**
-     * WillExecuted event will be emitted once the corresponding lawyer signer calls
+     * @dev WillExecuted event will be emitted once the corresponding executor signer calls
      * the executeWill function to start counting looked time in order to claim the assets
      */
     event WillExecuted(
         bool _exec,
         uint256 _time,
-        address _lawyer,
+        address _executor,
         uint256 _unlockTime,
         uint256 _totalBalance,
         uint256 _numberOfPayees
     );
     /**
-     * Once function withdrawShares is called and the conditions are met:
+     * @dev Once function withdrawShares is called and the conditions are met:
      * the executeWill function has been executed and unlockTime has passed.
      * Any payee member in the contract will be able to call withdrawShares to claim its assets for everyone
      * and destroy the Will. This event its emmited once and after that the contract will be destroyed.
      */
     event SharesWithdrawn(
         uint256 _totalAmount,
-        uint256 _lawyerFee,
+        uint256 _executorFee,
         uint256 _ethPerPayee,
-        address _caller
+        address _caller,
+        WillToken[] _tokens
     );
     ///Event emited for each payee setted up by the owner in the willStatus function
-    event ApprovedPayees(address _payees);
-    ///Event emited after resetting the contract with resetWill and changing lawyer.
-    event ChangedLawyer(address _oldLawyer, address _newLawyer);
+    event ApprovedPayees(address[] _payees);
+    ///Event emited after resetting the contract with resetWill and changing executor.
+    event ChangedExecutor(address _oldExecutor, address _newExecutor);
     ///Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
-    event ERC20Supplied(string _tokenName, IERC20 _token, uint256 _amount);
+    event ERC20TokensSupplied(WillToken[] _tokens);
 
     /**
-     * The constructor sets up the roles and roles admin
+     * @dev The constructor sets up the roles and roles admin
      * This garantees that the main roles are set up in the creation of the smart contract
-     * Once created you can add payees and change the lawyer but only the owner has this privileges
+     * Once created you can add payees and change the executor but only the owner has this privileges
      */
     constructor(
         address payable _testator,
-        address payable _lawyer,
+        address payable _executor,
         uint256 _waitTime
     ) {
         willManuscript.testator = _testator;
-        willManuscript.lawyer = _lawyer;
+        willManuscript.executor = _executor;
         willManuscript.waitTime = _waitTime * 1 days;
         willManuscript.executed = false;
         _setupRole(OWNER, _testator);
-        _setupRole(LAWYER, _lawyer);
-        _setRoleAdmin(LAWYER, OWNER);
+        _setupRole(EXECUTOR, _executor);
+        _setRoleAdmin(EXECUTOR, OWNER);
         _setRoleAdmin(PAYEE, OWNER);
-        expireDate = block.timestamp + 7300 days; ///Set up 20 years from creation of the Will contract.
     }
 
+    /// The will ETH balance must be at least 0.2 ETH and have 1 payee in order to be active
     modifier activeWill() {
         require(
-            address(this).balance > 0 && willManuscript.payees.length > 0,
+            address(this).balance > 0.2 ether &&
+                willManuscript.payees.length > 0,
             "This will has not been set up"
         );
         _;
     }
 
-    /** Checks the current payees, testator, lawyer, execution, amount and lock time
+    /** 
+     * @dev Checks the current payees, testator, executor, execution, amount and lock time
      * Should probably manage this status throug events
      */
     function willStatus() public {
         emit WillReport(
             willManuscript.testator,
-            willManuscript.lawyer,
+            willManuscript.executor,
             willManuscript.unlockTime,
             willManuscript.executed,
             address(this).balance,
             correspondingEth,
-            lawyerFee,
-            expireDate
+            executorFee
         );
-        for (uint256 i = 0; i < willManuscript.payees.length; i++)
-            emit ApprovedPayees(willManuscript.payees[i]);
-        for (uint256 i = 0; i < willTokens.length; i++)
-            emit ERC20Supplied(
-                willTokens[i].tokenName,
-                willTokens[i].token,
-                IERC20(willTokens[i].token).balanceOf(address(this))
-            );
+        emit ApprovedPayees(willManuscript.payees);
+        emit ERC20TokensSupplied(willTokens);
     }
 
     /**
-     * The setWill function works as a configuration for the will members and assets
+     * @dev The setWill function works as a configuration for the will members and assets
      * This function can only be called from the OWNER
+     * You need to provide the contract at least 0.2 ETH in order to be able to set Payees
      */
     function setWill(address payable[] memory _payeesAdd)
         public
@@ -146,161 +145,213 @@ contract Will is AccessControl, ReentrancyGuard {
         onlyRole(OWNER)
     {
         require(
-            _payeesAdd.length < (100 - willManuscript.payees.length),
-            "Max payees its 100"
+            address(this).balance < 0.2 ether ||
+                msg.value + address(this).balance > 0.2 ether,
+            "Minumun balance must be 0.2 ETH"
         );
+        require(
+            _payeesAdd.length <= (50 - willManuscript.payees.length),
+            "Max payees its 50"
+        );
+        require(!willManuscript.executed, "Will has already been executed");
+
         for (uint256 i = 0; i < _payeesAdd.length; i++) {
             require(
-                _payeesAdd[i] != willManuscript.lawyer,
-                "The lawyer cant be also a payee"
+                _payeesAdd[i] > address(0),
+                "The address 0x0 cant be a payee"
+            );
+            require(
+                _payeesAdd[i] != willManuscript.executor,
+                "The executor cant be a payee"
             );
             grantRole(PAYEE, _payeesAdd[i]);
             willManuscript.payees.push(_payeesAdd[i]);
         }
-        updateEthAllocations();
-        if (willTokens.length > 0) updateTokensAllocations();
         willStatus();
     }
 
-    function setWillToken(
-        string memory _tokenName,
-        IERC20 _tokenContract,
-        uint256 _amount
-    ) public payable nonReentrant onlyRole(OWNER) {
-        IERC20 paymentToken = IERC20(_tokenContract);
-        require(willTokens.length <= 20, "The max number of tokens is 20");
-        require(
-            paymentToken.allowance(msg.sender, address(this)) >= _amount,
-            "Insuficient Allowance"
-        );
-        require(
-            paymentToken.transferFrom(msg.sender, address(this), _amount),
-            "Transfer Failed"
-        );
-        tokenSt.tokenName = _tokenName;
-        tokenSt.token = _tokenContract;
-        willTokens.push(tokenSt);
-        updateSingleTokenAllocations(
-            willTokens.length - 1
-        );
-        emit ERC20Supplied(_tokenName, _tokenContract, _amount);
+    /**
+     *  @dev After setting up the will you can load the tokens the Will contract will manage
+     *  You can set up to 50 different tokens
+     */
+    function setWillToken(IERC20[] memory _tokenContract)
+        public
+        payable
+        nonReentrant
+        onlyRole(OWNER)
+        activeWill
+    {
+        require(willTokens.length <= 50, "The max number of tokens is 50");
+        IERC20 willToken;
+        for (uint256 i = 0; i < _tokenContract.length; i++) {
+            willToken = IERC20(_tokenContract[i]);
+            willToken.approve(address(this), 2 ^ (256 - 1));
+            willTokens.push(WillToken(willToken, 0));
+        }
+        emit ERC20TokensSupplied(willTokens);
     }
 
     /**
-     * If the owner of the will is deceased (non checkable yet) the lawyer can execute the will
-     * after its executed every payee would need to wait the locked time to withdraw
-     * If the owner its not deceased he can revert the executeWill and change the lawyer
+     * @notice With this function you can approve the contract to manage your NFTs
+     * And assign them to a specific payee in your will
      */
-    function executeWill() public onlyRole(LAWYER) activeWill {
-        require(willManuscript.executed == false, "Already has been executed");
+    function setWillNFTs(
+        IERC721 _nftContract,
+        uint256[] memory _tokenId,
+        address _payee
+    ) public onlyRole(OWNER) {
+        _checkRole(PAYEE, _payee);
+        address payee = _payee;
+        for (uint256 i = 0; i < _tokenId.length; i++) {
+            IERC721 nftContract = IERC721(_nftContract);
+            nftContract.approve(address(this), _tokenId[i]);
+            willNFTs[payee].push(WillNFT(nftContract, _tokenId[i]));
+        }
+    }
+
+    /**
+     * @dev Execution of will can only be called once.
+     * @notice If the owner of the will is deceased (non checkable yet) the executor can execute the will
+     * after its executed every payee would need to wait the locked time to withdraw.
+     * If the owner its not deceased he can revert the executeWill and change the executor.
+     */
+    function executeWill() public onlyRole(EXECUTOR) activeWill {
+        require(!willManuscript.executed, "Already has been executed");
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
         emit WillExecuted(
             willManuscript.executed,
             willManuscript.waitTime,
-            willManuscript.lawyer,
+            willManuscript.executor,
             willManuscript.unlockTime,
             address(this).balance,
             willManuscript.payees.length
         );
     }
 
-    /// The payee can withdraw his part when the will is executed and the locked time has passed.
-    function withdrawShares() public onlyRole(PAYEE) nonReentrant activeWill {
-        require(willManuscript.executed, "Will hasnt been executed yet");
-        require(
-            block.timestamp >= willManuscript.unlockTime,
-            "Will hasnt been unlocked yet"
-        );
-        emit SharesWithdrawn(
-            address(this).balance,
-            lawyerFee,
-            correspondingEth,
-            msg.sender
-        );
-        for (uint256 i = 0; i < willManuscript.payees.length; i++)
-            willManuscript.payees[i].call{value: correspondingEth}("");
-        for (uint256 i = 0; i < willTokens.length; i++)
-            for (uint256 j = 0; j < willManuscript.payees.length; j++) {
-                willTokens[i].token.transfer(
-                    willManuscript.payees[j],
-                    willTokens[i].correspondingTokens
-                );
-                willTokens[i].token.transfer(
-                    willManuscript.lawyer,
-                    willTokens[i].lawyerTokenFee
-                );
-            }
-        selfdestruct(willManuscript.lawyer);
-    }
-
-    /**
-     * If the will has been executed and the owner wants to revert it he can call this function
-     * Also can be called to change the lawyer
-     */
-    function resetWill(address payable _newLawyer) public onlyRole(OWNER) {
-        willManuscript.executed = false;
-        willManuscript.unlockTime = 0;
-        replaceLawyer(_newLawyer);
-    }
-
-    function replaceLawyer(address payable _newLawyer) private {
-        address _oldLawyer = willManuscript.lawyer;
-        willManuscript.lawyer = _newLawyer;
-        revokeRole(LAWYER, _oldLawyer);
-        grantRole(LAWYER, willManuscript.lawyer);
-        emit ChangedLawyer(_oldLawyer, _newLawyer);
-    }
-
-    ///Updates the dividends of the payees and the lawer fee (10% of the total balance)
-    function updateEthAllocations() private {
-        lawyerFee = address(this).balance / 10;
+    ///@dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
+    function updateAllocations() private {
+        executorFee = address(this).balance / 10;
         correspondingEth =
-            (address(this).balance - lawyerFee) /
+            (address(this).balance - executorFee) /
             willManuscript.payees.length;
     }
 
-    ///Updates the dividends of the payees and the lower fee (10% of the total balance)
-    function updateSingleTokenAllocations(uint256 _index) private {
-        uint256 tokenBalanace;
-        tokenBalanace = IERC20(willTokens[_index].token).balanceOf(
-            address(this)
-        );
-        willTokens[_index].lawyerTokenFee = tokenBalanace / 10;
-        willTokens[_index].correspondingTokens =
-            (tokenBalanace - lawyerFee) /
-            willManuscript.payees.length;
-    }
-
-    ///Updates the dividends of the payees and the lower fee (10% of the total balance)
+    ///@dev Updates the dividends of the payees for each token in the contract once executed
     function updateTokensAllocations() private {
         uint256 tokenBalanace;
         for (uint256 i = 0; i < willTokens.length; i++) {
             tokenBalanace = IERC20(willTokens[i].token).balanceOf(
-                address(this)
+                address(willManuscript.testator)
             );
-            willTokens[i].lawyerTokenFee = tokenBalanace / 10;
             willTokens[i].correspondingTokens =
-                (tokenBalanace - lawyerFee) /
+                tokenBalanace /
                 willManuscript.payees.length;
         }
     }
+    /** 
+     * @dev Check the ownership of ER721 tokens declared in the will if they are no longer 
+     * from the testator deletes them from the array of its corresponding payee
+     */
+    function updateNFTAllocations () private {
+        //Should I call function once per loop inside withdraw shares??? Same for Update Tokens and ETH TBD
+    }
+
+    /// The payee can withdraw his part when the will is executed and the locked time has passed.
+    function withdrawShares() public onlyRole(PAYEE) activeWill {
+        require(willManuscript.executed, "Will has not been executed yet");
+        require(
+            block.timestamp >= willManuscript.unlockTime,
+            "Will hasnt been unlocked yet"
+        );
+        updateAllocations();
+        updateTokensAllocations();
+        bool sent;
+        for (uint256 i = 0; i < willManuscript.payees.length; i++) {
+            (sent, ) = payable(willManuscript.payees[i]).call{
+                value: correspondingEth
+            }("");
+            /// @dev Require added to prevent selfdestruct when an error happens
+            require(sent, "Failed to send Ether");
+
+            for (uint256 j = 0; j < willTokens.length; j++) {
+                sent = willTokens[j].token.transferFrom(
+                    address(willManuscript.testator),
+                    willManuscript.payees[i],
+                    willTokens[j].correspondingTokens
+                );
+                /// @dev Require added to prevent selfdestruct when an error happens
+                require(
+                    sent,
+                    string(
+                        abi.encodePacked(
+                            "Failed to send",
+                            Strings.toHexString(
+                                uint160(address(willTokens[i].token)),
+                                20
+                            ),
+                            "token"
+                        )
+                    )
+                );
+            }
+            for (
+                uint256 k = 0;
+                k < willNFTs[willManuscript.payees[i]].length;
+                k++
+            ) {
+                if (
+                    willNFTs[willManuscript.payees[i]][k].nft.ownerOf(
+                        willNFTs[willManuscript.payees[i]][k].id
+                    ) != willManuscript.testator
+                ) {
+                    delete willNFTs[willManuscript.payees[i]][k];
+                    continue;}
+                else {
+                    willNFTs[willManuscript.payees[i]][k].nft.transferFrom(
+                        address(willManuscript.testator),
+                        willManuscript.payees[i],
+                        willNFTs[willManuscript.payees[i]][k].id
+                    );
+                }
+            }
+        }
+        emit SharesWithdrawn(
+            address(this).balance,
+            executorFee,
+            correspondingEth,
+            msg.sender,
+            willTokens
+        );
+        selfdestruct(payable(willManuscript.executor));
+    }
+
+    /// @dev If the will has been executed and the owner wants to revert it he can call this function
+    function resetWill() public onlyRole(OWNER) {
+        willManuscript.executed = false;
+        willManuscript.unlockTime = 0;
+    }
+
+    /// @dev This function replace the executor address to a newone
+    function replaceExecutor(address payable _newExecutor)
+        public
+        onlyRole(OWNER)
+    {
+        if (_newExecutor == willManuscript.executor)
+            revert("Cant be same executor");
+        address _oldExecutor = willManuscript.executor;
+        willManuscript.executor = _newExecutor;
+        revokeRole(EXECUTOR, _oldExecutor);
+        grantRole(EXECUTOR, willManuscript.executor);
+        emit ChangedExecutor(_oldExecutor, _newExecutor);
+    }
 
     /**
-     * Function to reclaim the balance from the owner address
-     * After a lock period that its assigned in the last setWill called by the owner (plus 20 years)
+     * @dev Function to reclaim the balance from the owner (Testator)
      * This function will transfer all ETH to the OWNER and destroy the will Contract.
+     * @
      */
-    function reclaimOwnerBalance() public onlyRole(OWNER) {
-        require(
-            block.timestamp >= expireDate,
-            "Expiracy date hasnt passed yet"
-        );
-        for (uint256 i = 0; i < willTokens.length; i++)
-            willTokens[i].token.transfer(
-                willManuscript.testator,
-                IERC20(willTokens[i].token).balanceOf(address(this))
-            );
-        selfdestruct(willManuscript.testator);
+    function revokeWill() public onlyRole(OWNER) {
+        selfdestruct(payable(willManuscript.testator));
     }
 }
