@@ -92,15 +92,15 @@ contract Will is AccessControl, ReentrancyGuard {
         WillToken[] _tokens
     );
 
-    /// @notice Event emited for each payee setted up by the owner in the willStatus function
+    /// Event emited for each payee setted up by the owner in the willStatus function
     event ApprovedPayees(address[] _payees);
-    /// @notice Event emited after resetting the contract with resetWill and changing executor.
+    /// Event emited after resetting the contract with resetWill and changing executor.
     event ChangedExecutor(address _oldExecutor, address _newExecutor);
-    /// @notice Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
+    /// Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
     event ERC20TokensSupplied(WillToken[] _tokens);
-    /// @notice Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
+    /// Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address _payee);
-
+    /// Event emited after approving Tokens from NFT Contract with _tokenId array.
     event NFTsApproved (IERC721 _nftContract, uint256[] _tokenId);
 
     /**
@@ -164,19 +164,18 @@ contract Will is AccessControl, ReentrancyGuard {
         onlyRole(OWNER)
     {
         require(
-            address(this).balance < 0.2 ether ||
                 msg.value + address(this).balance > 0.2 ether,
             "Minumun balance must be 0.2 ETH"
         );
         require(
             _payeesAdd.length <= (50 - willManuscript.payees.length),
-            "Max payees its 50"
+            "Max payees are 50"
         );
         require(!willManuscript.executed, "Will has already been executed");
 
         for (uint256 i = 0; i < _payeesAdd.length; i++) {
             require(
-                _payeesAdd[i] > address(0),
+                _payeesAdd[i] != address(0),
                 "The address 0x0 cant be a payee"
             );
             require(
@@ -400,7 +399,7 @@ contract Will is AccessControl, ReentrancyGuard {
 
     /**
      * @notice If the will has been executed and the Testator wants to revert it he can call this function.
-     * The executed will reset and the unlockTime will be set to 0.
+     * The executed will bool and the unlockTime will be set to 0.
      */
     function resetWill() public onlyRole(OWNER) {
         willManuscript.executed = false;
