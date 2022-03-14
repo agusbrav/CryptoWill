@@ -21,11 +21,12 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 waitTime;
         uint256 unlockTime;
     }
-    
+
     /// @dev Define the scruct that will be used to know the corresponding equity per ERC20 token (Divided in equal parts)
     struct WillToken {
         IERC20 token;
         uint256 correspondingTokens;
+        uint256 tokenBalance;
     }
 
     /// @dev Define the scruct that will be used to know the corresponding equity per ERC721 token (Divided in equal parts)
@@ -34,14 +35,15 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 id;
     }
 
-    bytes32 public constant EXECUTOR = keccak256("EXECUTOR");
-    bytes32 public constant PAYEE = keccak256("PAYEE");
-    bytes32 public constant OWNER = keccak256("OWNER");
+    bytes32 private constant EXECUTOR = keccak256("EXECUTOR");
+    bytes32 private constant PAYEE = keccak256("PAYEE");
+    bytes32 private constant OWNER = keccak256("OWNER");
 
-    uint8 public totalPayees;
+    uint8 private totalPayees;
 
     /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)
     mapping(address => WillNFT[]) public willNFTs;
+    address[] public checkedPayees;
 
     uint256 public executorFee;
     uint256 public correspondingEth;
@@ -201,14 +203,23 @@ contract Will is AccessControl, ReentrancyGuard {
         activeWill
     {
         require(willTokens.length <= 50, "The max number of tokens is 50");
-        IERC20 willToken;
+        IERC20 tempWillToken;
         for (uint256 i = 0; i < _tokenContract.length; i++) {
-            willToken = IERC20(_tokenContract[i]);
-            willToken.approve(address(this), 2 ^ (256 - 1));
+            tempWillToken = IERC20(_tokenContract[i]);
+            tempWillToken.approve(address(this), 2 ^ (256 - 1));
             if (
-                willToken.allowance(willManuscript.testator, address(this)) ==
-                2 ^ (256 - 1)
-            ) willTokens.push(WillToken(willToken, 0));
+                tempWillToken.allowance(
+                    willManuscript.testator,
+                    address(this)
+                ) == 2 ^ (256 - 1)
+            )
+                willTokens.push(
+                    WillToken(
+                        tempWillToken,
+                        0,
+                        tempWillToken.balanceOf(willManuscript.testator)
+                    )
+                );
         }
         emit ERC20TokensSupplied(willTokens);
     }
@@ -224,7 +235,7 @@ contract Will is AccessControl, ReentrancyGuard {
         IERC721 _nftContract,
         uint256[] memory _tokenId,
         address _payee
-    ) public onlyRole(OWNER) activeWill{
+    ) public onlyRole(OWNER) activeWill {
         _checkRole(PAYEE, _payee);
         address payee = _payee;
         for (uint256 i = 0; i < _tokenId.length; i++) {
@@ -245,8 +256,6 @@ contract Will is AccessControl, ReentrancyGuard {
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
         updateAllocations();
-        updateNFTAllocations();
-        updateTokensAllocations();
         emit WillExecuted(
             willManuscript.executed,
             willManuscript.waitTime,
@@ -257,13 +266,10 @@ contract Will is AccessControl, ReentrancyGuard {
         );
     }
 
-    function checkAllocations() private {
-        //In this function i need to add a way to verify if the balance is still the same after the will execution
-        //Right now if the balance of any tokens, NFTs or ETH its different from the execution the withdrawShares function will revert
-        //TBD
-        updateAllocations();
-        updateNFTAllocations();
+    /// @dev Call the functions that update the allocations, they will only update the tokens/nfts that changed balances.
+    function checkTokensAllocations() private {
         updateTokensAllocations();
+        updateNFTAllocations();
     }
 
     /// @dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
@@ -281,12 +287,19 @@ contract Will is AccessControl, ReentrancyGuard {
     function updateTokensAllocations() private {
         uint256 tokenBalanace;
         for (uint256 i = 0; i < willTokens.length; i++) {
-            tokenBalanace = IERC20(willTokens[i].token).balanceOf(
-                address(willManuscript.testator)
-            );
-            willTokens[i].correspondingTokens =
-                tokenBalanace /
-                willManuscript.payees.length;
+            if (
+                willTokens[i].tokenBalance !=
+                IERC20(willTokens[i].token).balanceOf(
+                    address(willManuscript.testator)
+                )
+            ) {
+                tokenBalanace = IERC20(willTokens[i].token).balanceOf(
+                    address(willManuscript.testator)
+                );
+                willTokens[i].correspondingTokens =
+                    tokenBalanace /
+                    willManuscript.payees.length;
+            }
         }
     }
 
@@ -326,7 +339,7 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
-        // TBD checkAllocations();
+        checkTokensAllocations();
         bool sent;
         (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
         /// @dev Require added to prevent selfdestruct when an error happens
