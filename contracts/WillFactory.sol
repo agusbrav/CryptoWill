@@ -1,6 +1,5 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
-import "hardhat/console.sol";
 import "./Will.sol";
 
 /**
@@ -28,15 +27,12 @@ contract WillFactory {
         return willOwners[msg.sender];
     }
 
-    function checkWills(address _address) external view returns (address) {
+    function checkWills(address _address) external returns (address) {
         require(
             willOwners[_address] != address(0),
             "You do not have a deployed Will"
         );
-        console.log(
-            "There is a deployed will from this address here: ",
-            willOwners[_address]
-        );
+        emit WillCreated(_address, willOwners[_address]);
         return willOwners[_address];
     }
 }
