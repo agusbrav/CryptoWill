@@ -190,6 +190,8 @@ contract Will is AccessControl, ReentrancyGuard {
      * You can set up to 50 different tokens
      * @notice From this function you can add Tokens contract to your will.
      * You need to approve the Token allowance in order to be added to the will.
+     * @param _tokenContract The ERC20 contracts you want to add to this Will
+     * After calling setWillWillToken with them the approve for each token will pop.
      */
     function setWillToken(IERC20[] memory _tokenContract)
         public
@@ -213,13 +215,16 @@ contract Will is AccessControl, ReentrancyGuard {
 
     /**
      * @notice With this function you can approve the contract to manage your NFTs
-     * And assign them to a specific payee in your will
+     * and assign them to a specific payee in your will, you will need to call this function for each NFT contract/payee you want to add.
+     * @param _nftContract The ER721 contract of NFT.
+     * @param _tokenId An array of Ids of the contracts NFT that you wish to allow to be assigned.
+     * @param _payee The address of the payee that would be assigned these NFTs.
      */
     function setWillNFTs(
         IERC721 _nftContract,
         uint256[] memory _tokenId,
         address _payee
-    ) public onlyRole(OWNER) {
+    ) public onlyRole(OWNER) activeWill{
         _checkRole(PAYEE, _payee);
         address payee = _payee;
         for (uint256 i = 0; i < _tokenId.length; i++) {
@@ -388,6 +393,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /**
      * @notice This function replaces the Executor for a new address.
      * Keep in mind that the old executor cant be assign again as new executor.
+     * @param _newExecutor The address of the new executor that will be assigned to this Will Contract.
      */
     function replaceExecutor(address payable _newExecutor)
         public
