@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 /**
- * @title Will Contract for Tokens and NFTs 
+ * @title Will Contract for Tokens and NFTs
  * @author https://github.com/agusbrav
  * @dev Once created, every Will contract will have its balance and members.
  * The creation of the contract from "WillFactory" sets up the owner and executor roles.
@@ -84,6 +84,7 @@ contract Will is AccessControl, ReentrancyGuard {
     event ChangedExecutor(address _oldExecutor, address _newExecutor);
     ///Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
     event ERC20TokensSupplied(WillToken[] _tokens);
+    event PayeeChecked(address _payee);
 
     /**
      * @dev The constructor sets up the roles and roles admin
@@ -115,7 +116,7 @@ contract Will is AccessControl, ReentrancyGuard {
         _;
     }
 
-    /** 
+    /**
      * @dev Checks the current payees, testator, executor, execution, amount and lock time
      * Should probably manage this status throug events
      */
@@ -219,6 +220,8 @@ contract Will is AccessControl, ReentrancyGuard {
         require(!willManuscript.executed, "Already has been executed");
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
+        updateAllocations();
+        updateTokensAllocations();
         emit WillExecuted(
             willManuscript.executed,
             willManuscript.waitTime,
@@ -249,52 +252,14 @@ contract Will is AccessControl, ReentrancyGuard {
                 willManuscript.payees.length;
         }
     }
-    /** 
-     * @dev Check the ownership of ER721 tokens declared in the will if they are no longer 
-     * from the testator deletes them from the array of its corresponding payee
+
+    /**
+     * @dev Check the ownership of ER721 tokens declared in the will if they are no longer
+     * from the testator deletes them from the array of its corresponding payee.
+     * In the case every NFT in the array its deleted the loop breaks for the payee.
      */
-    function updateNFTAllocations () private {
-        //Should I call function once per loop inside withdraw shares??? Same for Update Tokens and ETH TBD
-    }
-
-    /// The payee can withdraw his part when the will is executed and the locked time has passed.
-    function withdrawShares() public onlyRole(PAYEE) activeWill {
-        require(willManuscript.executed, "Will has not been executed yet");
-        require(
-            block.timestamp >= willManuscript.unlockTime,
-            "Will hasnt been unlocked yet"
-        );
-        updateAllocations();
-        updateTokensAllocations();
-        bool sent;
+    function updateNFTAllocations() private {
         for (uint256 i = 0; i < willManuscript.payees.length; i++) {
-            (sent, ) = payable(willManuscript.payees[i]).call{
-                value: correspondingEth
-            }("");
-            /// @dev Require added to prevent selfdestruct when an error happens
-            require(sent, "Failed to send Ether");
-
-            for (uint256 j = 0; j < willTokens.length; j++) {
-                sent = willTokens[j].token.transferFrom(
-                    address(willManuscript.testator),
-                    willManuscript.payees[i],
-                    willTokens[j].correspondingTokens
-                );
-                /// @dev Require added to prevent selfdestruct when an error happens
-                require(
-                    sent,
-                    string(
-                        abi.encodePacked(
-                            "Failed to send",
-                            Strings.toHexString(
-                                uint160(address(willTokens[i].token)),
-                                20
-                            ),
-                            "token"
-                        )
-                    )
-                );
-            }
             for (
                 uint256 k = 0;
                 k < willNFTs[willManuscript.payees[i]].length;
@@ -306,15 +271,50 @@ contract Will is AccessControl, ReentrancyGuard {
                     ) != willManuscript.testator
                 ) {
                     delete willNFTs[willManuscript.payees[i]][k];
-                    continue;}
-                else {
-                    willNFTs[willManuscript.payees[i]][k].nft.transferFrom(
-                        address(willManuscript.testator),
-                        willManuscript.payees[i],
-                        willNFTs[willManuscript.payees[i]][k].id
-                    );
                 }
+                if (willNFTs[willManuscript.payees[i]].length == 0) break;
             }
+        }
+    }
+
+    /// The payee can withdraw his part when the will is executed and the locked time has passed.
+    function withdrawShares() public onlyRole(PAYEE) activeWill {
+        require(willManuscript.executed, "Will has not been executed yet");
+        require(
+            block.timestamp >= willManuscript.unlockTime,
+            "Will hasnt been unlocked yet"
+        );
+        bool sent;
+        (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
+        /// @dev Require added to prevent selfdestruct when an error happens
+        require(sent, "Failed to send Ether");
+        for (uint256 j = 0; j < willTokens.length; j++) {
+            sent = willTokens[j].token.transferFrom(
+                address(willManuscript.testator),
+                msg.sender,
+                willTokens[j].correspondingTokens
+            );
+            /// @dev Require added to prevent selfdestruct when an error happens
+            require(
+                sent,
+                string(
+                    abi.encodePacked(
+                        "Failed to send",
+                        Strings.toHexString(
+                            uint160(address(willTokens[j].token)),
+                            20
+                        ),
+                        "token"
+                    )
+                )
+            );
+        }
+        for (uint256 k = 0; k < willNFTs[msg.sender].length; k++) {
+            willNFTs[msg.sender][k].nft.safeTransferFrom(
+                address(willManuscript.testator),
+                msg.sender,
+                willNFTs[msg.sender][k].id
+            );
         }
         emit SharesWithdrawn(
             address(this).balance,
@@ -323,7 +323,19 @@ contract Will is AccessControl, ReentrancyGuard {
             msg.sender,
             willTokens
         );
-        selfdestruct(payable(willManuscript.executor));
+        payeeChecked();
+        if (willManuscript.payees.length == 0)
+            selfdestruct(payable(willManuscript.executor));
+    }
+
+    /// @dev Deletes payee from array in willManuscript and revoke its PAYEE role.
+    function payeeChecked() private {
+        for (uint8 i = 0; i < willManuscript.payees.length; i++)
+            if (willManuscript.payees[i] == msg.sender) {
+                emit PayeeChecked(willManuscript.payees[i]);
+                revokeRole(PAYEE, willManuscript.payees[i]);
+                delete willManuscript.payees[i];
+            }
     }
 
     /// @dev If the will has been executed and the owner wants to revert it he can call this function
