@@ -34,6 +34,7 @@ contract Will is AccessControl, ReentrancyGuard {
     bytes32 public constant EXECUTOR = keccak256("EXECUTOR");
     bytes32 public constant PAYEE = keccak256("PAYEE");
     bytes32 public constant OWNER = keccak256("OWNER");
+    uint8 public totalPayees;
     mapping(address => WillNFT[]) public willNFTs;
     uint256 public executorFee;
     uint256 public correspondingEth;
@@ -78,12 +79,13 @@ contract Will is AccessControl, ReentrancyGuard {
         address _caller,
         WillToken[] _tokens
     );
-    ///Event emited for each payee setted up by the owner in the willStatus function
+    /// @dev Event emited for each payee setted up by the owner in the willStatus function
     event ApprovedPayees(address[] _payees);
-    ///Event emited after resetting the contract with resetWill and changing executor.
+    /// @dev Event emited after resetting the contract with resetWill and changing executor.
     event ChangedExecutor(address _oldExecutor, address _newExecutor);
-    ///Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
+    /// @dev Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
     event ERC20TokensSupplied(WillToken[] _tokens);
+    /// @dev Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address _payee);
 
     /**
@@ -113,6 +115,7 @@ contract Will is AccessControl, ReentrancyGuard {
                 willManuscript.payees.length > 0,
             "This will has not been set up"
         );
+        require(!willManuscript.executed, "Will has already been executed");
         _;
     }
 
@@ -172,8 +175,10 @@ contract Will is AccessControl, ReentrancyGuard {
     }
 
     /**
-     *  @dev After setting up the will you can load the tokens the Will contract will manage
-     *  You can set up to 50 different tokens
+     * @dev After setting up the will you can load the tokens the Will contract will manage
+     * You can set up to 50 different tokens
+     * @notice From this function you can add Tokens contract to your will.
+     * You need to approve the Token allowance in order to be added to the will.
      */
     function setWillToken(IERC20[] memory _tokenContract)
         public
@@ -187,7 +192,10 @@ contract Will is AccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < _tokenContract.length; i++) {
             willToken = IERC20(_tokenContract[i]);
             willToken.approve(address(this), 2 ^ (256 - 1));
-            willTokens.push(WillToken(willToken, 0));
+            if (
+                willToken.allowance(willManuscript.testator, address(this)) ==
+                2 ^ (256 - 1)
+            ) willTokens.push(WillToken(willToken, 0));
         }
         emit ERC20TokensSupplied(willTokens);
     }
@@ -217,10 +225,11 @@ contract Will is AccessControl, ReentrancyGuard {
      * If the owner its not deceased he can revert the executeWill and change the executor.
      */
     function executeWill() public onlyRole(EXECUTOR) activeWill {
-        require(!willManuscript.executed, "Already has been executed");
+        totalPayees = uint8(willManuscript.payees.length);
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
         updateAllocations();
+        updateNFTAllocations();
         updateTokensAllocations();
         emit WillExecuted(
             willManuscript.executed,
@@ -232,6 +241,15 @@ contract Will is AccessControl, ReentrancyGuard {
         );
     }
 
+    function checkAllocations() private {
+        //In this function i need to add a way to verify if the balance is still the same after the will execution
+        //Right now if the balance of any tokens, NFTs or ETH its different from the execution the withdrawShares function will revert
+        //TBD
+        updateAllocations();
+        updateNFTAllocations();
+        updateTokensAllocations();
+    }
+
     ///@dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
     function updateAllocations() private {
         executorFee = address(this).balance / 10;
@@ -240,7 +258,10 @@ contract Will is AccessControl, ReentrancyGuard {
             willManuscript.payees.length;
     }
 
-    ///@dev Updates the dividends of the payees for each token in the contract once executed
+    /**
+     * @dev Updates the dividends of the payees for each token in the contract once executed
+     * The Allocations are based in the current balance of the testator.
+     */
     function updateTokensAllocations() private {
         uint256 tokenBalanace;
         for (uint256 i = 0; i < willTokens.length; i++) {
@@ -277,13 +298,19 @@ contract Will is AccessControl, ReentrancyGuard {
         }
     }
 
-    /// The payee can withdraw his part when the will is executed and the locked time has passed.
-    function withdrawShares() public onlyRole(PAYEE) activeWill {
+    /**
+     * @notice The payee can withdraw his part when the will is executed and the locked time has passed.
+     * Each payee will need to call this function in order to claim its ETH, Tokens and NFTs.
+     * When the last payee executes this function the contract will destroy itself
+     * and transfer the remaining ETH (The executor fee) to the executor.
+     */
+    function withdrawShares() public onlyRole(PAYEE) {
         require(willManuscript.executed, "Will has not been executed yet");
         require(
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
+        // TBD checkAllocations();
         bool sent;
         (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
         /// @dev Require added to prevent selfdestruct when an error happens
@@ -338,13 +365,19 @@ contract Will is AccessControl, ReentrancyGuard {
             }
     }
 
-    /// @dev If the will has been executed and the owner wants to revert it he can call this function
+    /**
+     * @notice If the will has been executed and the Testator wants to revert it he can call this function.
+     * The executed will reset and the unlockTime will be set to 0.
+     */
     function resetWill() public onlyRole(OWNER) {
         willManuscript.executed = false;
         willManuscript.unlockTime = 0;
     }
 
-    /// @dev This function replace the executor address to a newone
+    /**
+     * @notice This function replaces the Executor for a new address.
+     * Keep in mind that the old executor cant be assign again as new executor.
+     */
     function replaceExecutor(address payable _newExecutor)
         public
         onlyRole(OWNER)
@@ -359,9 +392,9 @@ contract Will is AccessControl, ReentrancyGuard {
     }
 
     /**
-     * @dev Function to reclaim the balance from the owner (Testator)
+     * @notice Function to reclaim the balance from the owner (Testator)
      * This function will transfer all ETH to the OWNER and destroy the will Contract.
-     * @
+     * @dev The approved tokens and NFTs should not be concerned since the contract will be no longer reacheable.
      */
     function revokeWill() public onlyRole(OWNER) {
         selfdestruct(payable(willManuscript.testator));
