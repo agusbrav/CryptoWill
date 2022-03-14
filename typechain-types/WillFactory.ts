@@ -81,7 +81,10 @@ export interface WillFactory extends BaseContract {
   removeListener: OnEvent<this>;
 
   functions: {
-    checkWills(_address: string, overrides?: CallOverrides): Promise<[string]>;
+    checkWills(
+      _address: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
 
     createWillContract(
       _lawyer: string,
@@ -92,7 +95,10 @@ export interface WillFactory extends BaseContract {
     willOwners(arg0: string, overrides?: CallOverrides): Promise<[string]>;
   };
 
-  checkWills(_address: string, overrides?: CallOverrides): Promise<string>;
+  checkWills(
+    _address: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
 
   createWillContract(
     _lawyer: string,
@@ -123,7 +129,10 @@ export interface WillFactory extends BaseContract {
   };
 
   estimateGas: {
-    checkWills(_address: string, overrides?: CallOverrides): Promise<BigNumber>;
+    checkWills(
+      _address: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
 
     createWillContract(
       _lawyer: string,
@@ -137,7 +146,7 @@ export interface WillFactory extends BaseContract {
   populateTransaction: {
     checkWills(
       _address: string,
-      overrides?: CallOverrides
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     createWillContract(

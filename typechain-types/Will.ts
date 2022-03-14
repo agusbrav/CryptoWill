@@ -6,6 +6,7 @@ import { Listener, Provider } from "@ethersproject/providers";
 import {
   BaseContract,
   BigNumber,
+  BigNumberish,
   BytesLike,
   CallOverrides,
   ContractTransaction,
@@ -17,28 +18,44 @@ import {
 } from "ethers";
 import { OnEvent, TypedEvent, TypedEventFilter, TypedListener } from "./common";
 
+export declare namespace Will {
+  export type WillTokenStruct = {
+    token: string;
+    correspondingTokens: BigNumberish;
+  };
+
+  export type WillTokenStructOutput = [string, BigNumber] & {
+    token: string;
+    correspondingTokens: BigNumber;
+  };
+}
+
 export interface WillInterface extends utils.Interface {
   contractName: "Will";
   functions: {
     "DEFAULT_ADMIN_ROLE()": FunctionFragment;
-    "LAWYER()": FunctionFragment;
+    "EXECUTOR()": FunctionFragment;
     "OWNER()": FunctionFragment;
     "PAYEE()": FunctionFragment;
-    "correspondingTokens()": FunctionFragment;
+    "correspondingEth()": FunctionFragment;
     "executeWill()": FunctionFragment;
-    "expireDate()": FunctionFragment;
+    "executorFee()": FunctionFragment;
     "getRoleAdmin(bytes32)": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
     "hasRole(bytes32,address)": FunctionFragment;
-    "lawyerFee()": FunctionFragment;
-    "reclaimOwnerBalance()": FunctionFragment;
     "renounceRole(bytes32,address)": FunctionFragment;
-    "resetWill(address)": FunctionFragment;
+    "replaceExecutor(address)": FunctionFragment;
+    "resetWill()": FunctionFragment;
     "revokeRole(bytes32,address)": FunctionFragment;
+    "revokeWill()": FunctionFragment;
     "setWill(address[])": FunctionFragment;
+    "setWillNFTs(address,uint256[],address)": FunctionFragment;
+    "setWillToken(address[])": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
     "willManuscript()": FunctionFragment;
+    "willNFTs(address,uint256)": FunctionFragment;
     "willStatus()": FunctionFragment;
+    "willTokens(uint256)": FunctionFragment;
     "withdrawShares()": FunctionFragment;
   };
 
@@ -46,11 +63,11 @@ export interface WillInterface extends utils.Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: "LAWYER", values?: undefined): string;
+  encodeFunctionData(functionFragment: "EXECUTOR", values?: undefined): string;
   encodeFunctionData(functionFragment: "OWNER", values?: undefined): string;
   encodeFunctionData(functionFragment: "PAYEE", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "correspondingTokens",
+    functionFragment: "correspondingEth",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -58,7 +75,7 @@ export interface WillInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "expireDate",
+    functionFragment: "executorFee",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -73,21 +90,32 @@ export interface WillInterface extends utils.Interface {
     functionFragment: "hasRole",
     values: [BytesLike, string]
   ): string;
-  encodeFunctionData(functionFragment: "lawyerFee", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "reclaimOwnerBalance",
-    values?: undefined
-  ): string;
   encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, string]
   ): string;
-  encodeFunctionData(functionFragment: "resetWill", values: [string]): string;
+  encodeFunctionData(
+    functionFragment: "replaceExecutor",
+    values: [string]
+  ): string;
+  encodeFunctionData(functionFragment: "resetWill", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "revokeRole",
     values: [BytesLike, string]
   ): string;
+  encodeFunctionData(
+    functionFragment: "revokeWill",
+    values?: undefined
+  ): string;
   encodeFunctionData(functionFragment: "setWill", values: [string[]]): string;
+  encodeFunctionData(
+    functionFragment: "setWillNFTs",
+    values: [string, BigNumberish[], string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setWillToken",
+    values: [string[]]
+  ): string;
   encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
@@ -97,8 +125,16 @@ export interface WillInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "willNFTs",
+    values: [string, BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "willStatus",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "willTokens",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "withdrawShares",
@@ -109,36 +145,47 @@ export interface WillInterface extends utils.Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "LAWYER", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "EXECUTOR", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "OWNER", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "PAYEE", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "correspondingTokens",
+    functionFragment: "correspondingEth",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "executeWill",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "expireDate", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "executorFee",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "lawyerFee", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "reclaimOwnerBalance",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "replaceExecutor",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "resetWill", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "revokeRole", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "revokeWill", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "setWill", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "setWillNFTs",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setWillToken",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "supportsInterface",
     data: BytesLike
@@ -147,27 +194,29 @@ export interface WillInterface extends utils.Interface {
     functionFragment: "willManuscript",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "willNFTs", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "willStatus", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "willTokens", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "withdrawShares",
     data: BytesLike
   ): Result;
 
   events: {
-    "ApprovedPayees(address)": EventFragment;
-    "ChangedLawyer(address,address)": EventFragment;
-    "NewPayeeAdded(address)": EventFragment;
+    "ApprovedPayees(address[])": EventFragment;
+    "ChangedExecutor(address,address)": EventFragment;
+    "ERC20TokensSupplied(tuple[])": EventFragment;
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
     "RoleRevoked(bytes32,address,address)": EventFragment;
-    "SharesWithdrawn(uint256,uint256,uint256,address)": EventFragment;
+    "SharesWithdrawn(uint256,uint256,uint256,address,tuple[])": EventFragment;
     "WillExecuted(bool,uint256,address,uint256,uint256,uint256)": EventFragment;
-    "WillReport(address,address,uint256,bool,uint256,uint256,uint256,uint256)": EventFragment;
+    "WillReport(address,address,uint256,bool,uint256,uint256,uint256)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "ApprovedPayees"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "ChangedLawyer"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "NewPayeeAdded"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "ChangedExecutor"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "ERC20TokensSupplied"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleAdminChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleGranted"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleRevoked"): EventFragment;
@@ -176,20 +225,24 @@ export interface WillInterface extends utils.Interface {
   getEvent(nameOrSignatureOrTopic: "WillReport"): EventFragment;
 }
 
-export type ApprovedPayeesEvent = TypedEvent<[string], { _payees: string }>;
+export type ApprovedPayeesEvent = TypedEvent<[string[]], { _payees: string[] }>;
 
 export type ApprovedPayeesEventFilter = TypedEventFilter<ApprovedPayeesEvent>;
 
-export type ChangedLawyerEvent = TypedEvent<
+export type ChangedExecutorEvent = TypedEvent<
   [string, string],
-  { _oldLawyer: string; _newLawyer: string }
+  { _oldExecutor: string; _newExecutor: string }
 >;
 
-export type ChangedLawyerEventFilter = TypedEventFilter<ChangedLawyerEvent>;
+export type ChangedExecutorEventFilter = TypedEventFilter<ChangedExecutorEvent>;
 
-export type NewPayeeAddedEvent = TypedEvent<[string], { _newPayee: string }>;
+export type ERC20TokensSuppliedEvent = TypedEvent<
+  [Will.WillTokenStructOutput[]],
+  { _tokens: Will.WillTokenStructOutput[] }
+>;
 
-export type NewPayeeAddedEventFilter = TypedEventFilter<NewPayeeAddedEvent>;
+export type ERC20TokensSuppliedEventFilter =
+  TypedEventFilter<ERC20TokensSuppliedEvent>;
 
 export type RoleAdminChangedEvent = TypedEvent<
   [string, string, string],
@@ -214,12 +267,13 @@ export type RoleRevokedEvent = TypedEvent<
 export type RoleRevokedEventFilter = TypedEventFilter<RoleRevokedEvent>;
 
 export type SharesWithdrawnEvent = TypedEvent<
-  [BigNumber, BigNumber, BigNumber, string],
+  [BigNumber, BigNumber, BigNumber, string, Will.WillTokenStructOutput[]],
   {
     _totalAmount: BigNumber;
-    _lawyerFee: BigNumber;
+    _executorFee: BigNumber;
     _ethPerPayee: BigNumber;
     _caller: string;
+    _tokens: Will.WillTokenStructOutput[];
   }
 >;
 
@@ -230,7 +284,7 @@ export type WillExecutedEvent = TypedEvent<
   {
     _exec: boolean;
     _time: BigNumber;
-    _lawyer: string;
+    _executor: string;
     _unlockTime: BigNumber;
     _totalBalance: BigNumber;
     _numberOfPayees: BigNumber;
@@ -240,25 +294,15 @@ export type WillExecutedEvent = TypedEvent<
 export type WillExecutedEventFilter = TypedEventFilter<WillExecutedEvent>;
 
 export type WillReportEvent = TypedEvent<
-  [
-    string,
-    string,
-    BigNumber,
-    boolean,
-    BigNumber,
-    BigNumber,
-    BigNumber,
-    BigNumber
-  ],
+  [string, string, BigNumber, boolean, BigNumber, BigNumber, BigNumber],
   {
     _owner: string;
-    _lawyer: string;
+    _executor: string;
     _unlockTime: BigNumber;
     _withdrawAvailable: boolean;
     _totalBalance: BigNumber;
-    _correspondingTokens: BigNumber;
-    _lawyerFee: BigNumber;
-    _expireDate: BigNumber;
+    _correspondingEth: BigNumber;
+    _executorFee: BigNumber;
   }
 >;
 
@@ -294,19 +338,19 @@ export interface Will extends BaseContract {
   functions: {
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<[string]>;
 
-    LAWYER(overrides?: CallOverrides): Promise<[string]>;
+    EXECUTOR(overrides?: CallOverrides): Promise<[string]>;
 
     OWNER(overrides?: CallOverrides): Promise<[string]>;
 
     PAYEE(overrides?: CallOverrides): Promise<[string]>;
 
-    correspondingTokens(overrides?: CallOverrides): Promise<[BigNumber]>;
+    correspondingEth(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     executeWill(
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    expireDate(overrides?: CallOverrides): Promise<[BigNumber]>;
+    executorFee(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<[string]>;
 
@@ -322,20 +366,18 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[boolean]>;
 
-    lawyerFee(overrides?: CallOverrides): Promise<[BigNumber]>;
-
-    reclaimOwnerBalance(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
     renounceRole(
       role: BytesLike,
       account: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    replaceExecutor(
+      _newExecutor: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     resetWill(
-      _newLawyer: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -345,8 +387,24 @@ export interface Will extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    revokeWill(
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     setWill(
       _payeesAdd: string[],
+      overrides?: PayableOverrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    setWillNFTs(
+      _nftContract: string,
+      _tokenId: BigNumberish[],
+      _payee: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    setWillToken(
+      _tokenContract: string[],
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -358,18 +416,31 @@ export interface Will extends BaseContract {
     willManuscript(
       overrides?: CallOverrides
     ): Promise<
-      [string, string, BigNumber, boolean, BigNumber] & {
+      [string, string, boolean, BigNumber, BigNumber] & {
         testator: string;
-        lawyer: string;
-        waitTime: BigNumber;
+        executor: string;
         executed: boolean;
+        waitTime: BigNumber;
         unlockTime: BigNumber;
       }
     >;
 
+    willNFTs(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string, BigNumber] & { nft: string; id: BigNumber }>;
+
     willStatus(
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
+
+    willTokens(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<
+      [string, BigNumber] & { token: string; correspondingTokens: BigNumber }
+    >;
 
     withdrawShares(
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -378,19 +449,19 @@ export interface Will extends BaseContract {
 
   DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<string>;
 
-  LAWYER(overrides?: CallOverrides): Promise<string>;
+  EXECUTOR(overrides?: CallOverrides): Promise<string>;
 
   OWNER(overrides?: CallOverrides): Promise<string>;
 
   PAYEE(overrides?: CallOverrides): Promise<string>;
 
-  correspondingTokens(overrides?: CallOverrides): Promise<BigNumber>;
+  correspondingEth(overrides?: CallOverrides): Promise<BigNumber>;
 
   executeWill(
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  expireDate(overrides?: CallOverrides): Promise<BigNumber>;
+  executorFee(overrides?: CallOverrides): Promise<BigNumber>;
 
   getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<string>;
 
@@ -406,20 +477,18 @@ export interface Will extends BaseContract {
     overrides?: CallOverrides
   ): Promise<boolean>;
 
-  lawyerFee(overrides?: CallOverrides): Promise<BigNumber>;
-
-  reclaimOwnerBalance(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   renounceRole(
     role: BytesLike,
     account: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  replaceExecutor(
+    _newExecutor: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   resetWill(
-    _newLawyer: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -429,8 +498,24 @@ export interface Will extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  revokeWill(
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   setWill(
     _payeesAdd: string[],
+    overrides?: PayableOverrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  setWillNFTs(
+    _nftContract: string,
+    _tokenId: BigNumberish[],
+    _payee: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  setWillToken(
+    _tokenContract: string[],
     overrides?: PayableOverrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -442,18 +527,31 @@ export interface Will extends BaseContract {
   willManuscript(
     overrides?: CallOverrides
   ): Promise<
-    [string, string, BigNumber, boolean, BigNumber] & {
+    [string, string, boolean, BigNumber, BigNumber] & {
       testator: string;
-      lawyer: string;
-      waitTime: BigNumber;
+      executor: string;
       executed: boolean;
+      waitTime: BigNumber;
       unlockTime: BigNumber;
     }
   >;
 
+  willNFTs(
+    arg0: string,
+    arg1: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<[string, BigNumber] & { nft: string; id: BigNumber }>;
+
   willStatus(
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
+
+  willTokens(
+    arg0: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<
+    [string, BigNumber] & { token: string; correspondingTokens: BigNumber }
+  >;
 
   withdrawShares(
     overrides?: Overrides & { from?: string | Promise<string> }
@@ -462,17 +560,17 @@ export interface Will extends BaseContract {
   callStatic: {
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<string>;
 
-    LAWYER(overrides?: CallOverrides): Promise<string>;
+    EXECUTOR(overrides?: CallOverrides): Promise<string>;
 
     OWNER(overrides?: CallOverrides): Promise<string>;
 
     PAYEE(overrides?: CallOverrides): Promise<string>;
 
-    correspondingTokens(overrides?: CallOverrides): Promise<BigNumber>;
+    correspondingEth(overrides?: CallOverrides): Promise<BigNumber>;
 
     executeWill(overrides?: CallOverrides): Promise<void>;
 
-    expireDate(overrides?: CallOverrides): Promise<BigNumber>;
+    executorFee(overrides?: CallOverrides): Promise<BigNumber>;
 
     getRoleAdmin(role: BytesLike, overrides?: CallOverrides): Promise<string>;
 
@@ -488,17 +586,18 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<boolean>;
 
-    lawyerFee(overrides?: CallOverrides): Promise<BigNumber>;
-
-    reclaimOwnerBalance(overrides?: CallOverrides): Promise<void>;
-
     renounceRole(
       role: BytesLike,
       account: string,
       overrides?: CallOverrides
     ): Promise<void>;
 
-    resetWill(_newLawyer: string, overrides?: CallOverrides): Promise<void>;
+    replaceExecutor(
+      _newExecutor: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    resetWill(overrides?: CallOverrides): Promise<void>;
 
     revokeRole(
       role: BytesLike,
@@ -506,7 +605,21 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<void>;
 
+    revokeWill(overrides?: CallOverrides): Promise<void>;
+
     setWill(_payeesAdd: string[], overrides?: CallOverrides): Promise<void>;
+
+    setWillNFTs(
+      _nftContract: string,
+      _tokenId: BigNumberish[],
+      _payee: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setWillToken(
+      _tokenContract: string[],
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     supportsInterface(
       interfaceId: BytesLike,
@@ -516,35 +629,50 @@ export interface Will extends BaseContract {
     willManuscript(
       overrides?: CallOverrides
     ): Promise<
-      [string, string, BigNumber, boolean, BigNumber] & {
+      [string, string, boolean, BigNumber, BigNumber] & {
         testator: string;
-        lawyer: string;
-        waitTime: BigNumber;
+        executor: string;
         executed: boolean;
+        waitTime: BigNumber;
         unlockTime: BigNumber;
       }
     >;
 
+    willNFTs(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string, BigNumber] & { nft: string; id: BigNumber }>;
+
     willStatus(overrides?: CallOverrides): Promise<void>;
+
+    willTokens(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<
+      [string, BigNumber] & { token: string; correspondingTokens: BigNumber }
+    >;
 
     withdrawShares(overrides?: CallOverrides): Promise<void>;
   };
 
   filters: {
-    "ApprovedPayees(address)"(_payees?: null): ApprovedPayeesEventFilter;
+    "ApprovedPayees(address[])"(_payees?: null): ApprovedPayeesEventFilter;
     ApprovedPayees(_payees?: null): ApprovedPayeesEventFilter;
 
-    "ChangedLawyer(address,address)"(
-      _oldLawyer?: null,
-      _newLawyer?: null
-    ): ChangedLawyerEventFilter;
-    ChangedLawyer(
-      _oldLawyer?: null,
-      _newLawyer?: null
-    ): ChangedLawyerEventFilter;
+    "ChangedExecutor(address,address)"(
+      _oldExecutor?: null,
+      _newExecutor?: null
+    ): ChangedExecutorEventFilter;
+    ChangedExecutor(
+      _oldExecutor?: null,
+      _newExecutor?: null
+    ): ChangedExecutorEventFilter;
 
-    "NewPayeeAdded(address)"(_newPayee?: null): NewPayeeAddedEventFilter;
-    NewPayeeAdded(_newPayee?: null): NewPayeeAddedEventFilter;
+    "ERC20TokensSupplied(tuple[])"(
+      _tokens?: null
+    ): ERC20TokensSuppliedEventFilter;
+    ERC20TokensSupplied(_tokens?: null): ERC20TokensSuppliedEventFilter;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)"(
       role?: BytesLike | null,
@@ -579,23 +707,25 @@ export interface Will extends BaseContract {
       sender?: string | null
     ): RoleRevokedEventFilter;
 
-    "SharesWithdrawn(uint256,uint256,uint256,address)"(
+    "SharesWithdrawn(uint256,uint256,uint256,address,tuple[])"(
       _totalAmount?: null,
-      _lawyerFee?: null,
+      _executorFee?: null,
       _ethPerPayee?: null,
-      _caller?: null
+      _caller?: null,
+      _tokens?: null
     ): SharesWithdrawnEventFilter;
     SharesWithdrawn(
       _totalAmount?: null,
-      _lawyerFee?: null,
+      _executorFee?: null,
       _ethPerPayee?: null,
-      _caller?: null
+      _caller?: null,
+      _tokens?: null
     ): SharesWithdrawnEventFilter;
 
     "WillExecuted(bool,uint256,address,uint256,uint256,uint256)"(
       _exec?: null,
       _time?: null,
-      _lawyer?: null,
+      _executor?: null,
       _unlockTime?: null,
       _totalBalance?: null,
       _numberOfPayees?: null
@@ -603,50 +733,48 @@ export interface Will extends BaseContract {
     WillExecuted(
       _exec?: null,
       _time?: null,
-      _lawyer?: null,
+      _executor?: null,
       _unlockTime?: null,
       _totalBalance?: null,
       _numberOfPayees?: null
     ): WillExecutedEventFilter;
 
-    "WillReport(address,address,uint256,bool,uint256,uint256,uint256,uint256)"(
+    "WillReport(address,address,uint256,bool,uint256,uint256,uint256)"(
       _owner?: null,
-      _lawyer?: null,
+      _executor?: null,
       _unlockTime?: null,
       _withdrawAvailable?: null,
       _totalBalance?: null,
-      _correspondingTokens?: null,
-      _lawyerFee?: null,
-      _expireDate?: null
+      _correspondingEth?: null,
+      _executorFee?: null
     ): WillReportEventFilter;
     WillReport(
       _owner?: null,
-      _lawyer?: null,
+      _executor?: null,
       _unlockTime?: null,
       _withdrawAvailable?: null,
       _totalBalance?: null,
-      _correspondingTokens?: null,
-      _lawyerFee?: null,
-      _expireDate?: null
+      _correspondingEth?: null,
+      _executorFee?: null
     ): WillReportEventFilter;
   };
 
   estimateGas: {
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<BigNumber>;
 
-    LAWYER(overrides?: CallOverrides): Promise<BigNumber>;
+    EXECUTOR(overrides?: CallOverrides): Promise<BigNumber>;
 
     OWNER(overrides?: CallOverrides): Promise<BigNumber>;
 
     PAYEE(overrides?: CallOverrides): Promise<BigNumber>;
 
-    correspondingTokens(overrides?: CallOverrides): Promise<BigNumber>;
+    correspondingEth(overrides?: CallOverrides): Promise<BigNumber>;
 
     executeWill(
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    expireDate(overrides?: CallOverrides): Promise<BigNumber>;
+    executorFee(overrides?: CallOverrides): Promise<BigNumber>;
 
     getRoleAdmin(
       role: BytesLike,
@@ -665,20 +793,18 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    lawyerFee(overrides?: CallOverrides): Promise<BigNumber>;
-
-    reclaimOwnerBalance(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     renounceRole(
       role: BytesLike,
       account: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    replaceExecutor(
+      _newExecutor: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     resetWill(
-      _newLawyer: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -688,8 +814,24 @@ export interface Will extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    revokeWill(
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     setWill(
       _payeesAdd: string[],
+      overrides?: PayableOverrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    setWillNFTs(
+      _nftContract: string,
+      _tokenId: BigNumberish[],
+      _payee: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    setWillToken(
+      _tokenContract: string[],
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -700,8 +842,19 @@ export interface Will extends BaseContract {
 
     willManuscript(overrides?: CallOverrides): Promise<BigNumber>;
 
+    willNFTs(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
     willStatus(
       overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    willTokens(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
     ): Promise<BigNumber>;
 
     withdrawShares(
@@ -714,21 +867,19 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    LAWYER(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+    EXECUTOR(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     OWNER(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     PAYEE(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    correspondingTokens(
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
+    correspondingEth(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     executeWill(
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
-    expireDate(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+    executorFee(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     getRoleAdmin(
       role: BytesLike,
@@ -747,20 +898,18 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    lawyerFee(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    reclaimOwnerBalance(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
     renounceRole(
       role: BytesLike,
       account: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    replaceExecutor(
+      _newExecutor: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     resetWill(
-      _newLawyer: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -770,8 +919,24 @@ export interface Will extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    revokeWill(
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     setWill(
       _payeesAdd: string[],
+      overrides?: PayableOverrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    setWillNFTs(
+      _nftContract: string,
+      _tokenId: BigNumberish[],
+      _payee: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    setWillToken(
+      _tokenContract: string[],
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -782,8 +947,19 @@ export interface Will extends BaseContract {
 
     willManuscript(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
+    willNFTs(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
     willStatus(
       overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    willTokens(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
     withdrawShares(
