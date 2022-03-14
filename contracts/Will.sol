@@ -101,6 +101,8 @@ contract Will is AccessControl, ReentrancyGuard {
     /// @notice Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address _payee);
 
+    event NFTsApproved (IERC721 _nftContract, uint256[] _tokenId);
+
     /**
      * @dev The constructor sets up the roles and roles admin
      * This garantees that the main roles are set up in the creation of the smart contract
@@ -212,7 +214,7 @@ contract Will is AccessControl, ReentrancyGuard {
                     willManuscript.testator,
                     address(this)
                 ) == 2 ^ (256 - 1)
-            )
+            ){
                 willTokens.push(
                     WillToken(
                         tempWillToken,
@@ -220,8 +222,9 @@ contract Will is AccessControl, ReentrancyGuard {
                         tempWillToken.balanceOf(willManuscript.testator)
                     )
                 );
+                emit ERC20TokensSupplied(willTokens);
+                }
         }
-        emit ERC20TokensSupplied(willTokens);
     }
 
     /**
@@ -241,7 +244,10 @@ contract Will is AccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < _tokenId.length; i++) {
             IERC721 nftContract = IERC721(_nftContract);
             nftContract.approve(address(this), _tokenId[i]);
+            if (nftContract.getApproved(_tokenId[i]) == address(this)){
             willNFTs[payee].push(WillNFT(nftContract, _tokenId[i]));
+            emit NFTsApproved (nftContract, _tokenId);
+            }
         }
     }
 
@@ -267,9 +273,9 @@ contract Will is AccessControl, ReentrancyGuard {
     }
 
     /// @dev Call the functions that update the allocations, they will only update the tokens/nfts that changed balances.
-    function checkTokensAllocations() private {
+    function checkTokensAllocations(address _payeeChecking) private {
         updateTokensAllocations();
-        updateNFTAllocations();
+        updateNFTAllocations(_payeeChecking);
     }
 
     /// @dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
@@ -308,23 +314,21 @@ contract Will is AccessControl, ReentrancyGuard {
      * from the testator deletes them from the array of its corresponding payee.
      * In the case every NFT in the array its deleted the loop breaks for the payee.
      */
-    function updateNFTAllocations() private {
-        for (uint256 i = 0; i < willManuscript.payees.length; i++) {
+    function updateNFTAllocations(address _payeeChecking) private {      
             for (
-                uint256 k = 0;
-                k < willNFTs[willManuscript.payees[i]].length;
-                k++
+                uint256 k = willNFTs[_payeeChecking].length - 1;
+                k >= 0;
+                k--
             ) {
                 if (
-                    willNFTs[willManuscript.payees[i]][k].nft.ownerOf(
-                        willNFTs[willManuscript.payees[i]][k].id
+                    willNFTs[_payeeChecking][k].nft.ownerOf(
+                        willNFTs[_payeeChecking][k].id
                     ) != willManuscript.testator
                 ) {
-                    delete willNFTs[willManuscript.payees[i]][k];
+                    delete willNFTs[_payeeChecking][k];
                 }
-                if (willNFTs[willManuscript.payees[i]].length == 0) break;
+                if (willNFTs[_payeeChecking].length == 0) break;
             }
-        }
     }
 
     /**
@@ -339,7 +343,7 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
-        checkTokensAllocations();
+        checkTokensAllocations(msg.sender);
         bool sent;
         (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
         /// @dev Require added to prevent selfdestruct when an error happens
