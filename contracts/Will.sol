@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
  * The creation of the contract from "WillFactory" sets up the owner and executor roles.
  */
 contract Will is AccessControl, ReentrancyGuard {
-    // This struct has the useful information of the contract
+    /// @dev This struct has the useful information of the contract
     struct Manuscript {
         address testator;
         address executor;
@@ -21,11 +21,14 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 waitTime;
         uint256 unlockTime;
     }
-    // Define the scruct that will be used to know the corresponding equity per token (Divided in equal parts)
+    
+    /// @dev Define the scruct that will be used to know the corresponding equity per ERC20 token (Divided in equal parts)
     struct WillToken {
         IERC20 token;
         uint256 correspondingTokens;
     }
+
+    /// @dev Define the scruct that will be used to know the corresponding equity per ERC721 token (Divided in equal parts)
     struct WillNFT {
         IERC721 nft;
         uint256 id;
@@ -34,15 +37,20 @@ contract Will is AccessControl, ReentrancyGuard {
     bytes32 public constant EXECUTOR = keccak256("EXECUTOR");
     bytes32 public constant PAYEE = keccak256("PAYEE");
     bytes32 public constant OWNER = keccak256("OWNER");
+
     uint8 public totalPayees;
+
+    /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)
     mapping(address => WillNFT[]) public willNFTs;
+
     uint256 public executorFee;
     uint256 public correspondingEth;
+
     WillToken[] public willTokens;
     Manuscript public willManuscript;
 
     /**
-     * @dev WillReport event trigers all info from the manuscript
+     * @notice WillReport event trigers all info from the manuscript
      * Can be called with WillStatus function or its called automatically after setting up the will
      */
     event WillReport(
@@ -54,8 +62,9 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _correspondingEth,
         uint256 _executorFee
     );
+
     /**
-     * @dev WillExecuted event will be emitted once the corresponding executor signer calls
+     * @notice WillExecuted event will be emitted once the corresponding executor signer calls
      * the executeWill function to start counting looked time in order to claim the assets
      */
     event WillExecuted(
@@ -66,8 +75,9 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _totalBalance,
         uint256 _numberOfPayees
     );
+
     /**
-     * @dev Once function withdrawShares is called and the conditions are met:
+     * @notice Once function withdrawShares is called and the conditions are met:
      * the executeWill function has been executed and unlockTime has passed.
      * Any payee member in the contract will be able to call withdrawShares to claim its assets for everyone
      * and destroy the Will. This event its emmited once and after that the contract will be destroyed.
@@ -79,13 +89,14 @@ contract Will is AccessControl, ReentrancyGuard {
         address _caller,
         WillToken[] _tokens
     );
-    /// @dev Event emited for each payee setted up by the owner in the willStatus function
+
+    /// @notice Event emited for each payee setted up by the owner in the willStatus function
     event ApprovedPayees(address[] _payees);
-    /// @dev Event emited after resetting the contract with resetWill and changing executor.
+    /// @notice Event emited after resetting the contract with resetWill and changing executor.
     event ChangedExecutor(address _oldExecutor, address _newExecutor);
-    /// @dev Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
+    /// @notice Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
     event ERC20TokensSupplied(WillToken[] _tokens);
-    /// @dev Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
+    /// @notice Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address _payee);
 
     /**
@@ -250,7 +261,7 @@ contract Will is AccessControl, ReentrancyGuard {
         updateTokensAllocations();
     }
 
-    ///@dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
+    /// @dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
     function updateAllocations() private {
         executorFee = address(this).balance / 10;
         correspondingEth =

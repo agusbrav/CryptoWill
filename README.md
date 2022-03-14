@@ -25,6 +25,7 @@ The project is currently a work in progress. Will Factory and will contract basi
 
 * Reorganize and update README.
 * Adding ERC20 and ERC721 support to the contract.
+* Updating hardhat config and tasks.
 * Adding optional contact info for owner, lawyer and payee in the contract (e.g. Email/Phone).
 * Deploy and verify to rinkeby testnet.
 * Front end.
