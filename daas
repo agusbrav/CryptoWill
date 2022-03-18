@@ -1,0 +1,31 @@
+warning: LF will be replaced by CRLF in contracts/Will.sol.
+The file will have its original line endings in your working directory
+[1mdiff --git a/contracts/Will.sol b/contracts/Will.sol[m
+[1mindex 9e7bdf7..fcfe5c8 100644[m
+[1m--- a/contracts/Will.sol[m
+[1m+++ b/contracts/Will.sol[m
+[36m@@ -35,10 +35,12 @@[m [mcontract Will is AccessControl, ReentrancyGuard {[m
+         uint256 id;[m
+     }[m
+ [m
+[32m+[m[32m    /// @dev bytes32 constants for specific Roles according to AccessControl[m
+     bytes32 private constant EXECUTOR = keccak256("EXECUTOR");[m
+     bytes32 private constant PAYEE = keccak256("PAYEE");[m
+     bytes32 private constant OWNER = keccak256("OWNER");[m
+ [m
+[32m+[m[32m    /// @dev[m[41m [m
+     uint8 private totalPayees;[m
+ [m
+     /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)[m
+[36m@@ -400,8 +402,11 @@[m [mcontract Will is AccessControl, ReentrancyGuard {[m
+     /**[m
+      * @notice If the will has been executed and the Testator wants to revert it he can call this function.[m
+      * The executed will bool and the unlockTime will be set to 0.[m
+[32m+[m[32m     * If at least one payee withdraw its shares you wont be able to call this function anymore since the contract Will[m
+[32m+[m[32m     * its already executing.[m
+      */[m
+     function resetWill() public onlyRole(OWNER) {[m
+[32m+[m[32m        require(willManuscript.payees.length == totalPayees,"At least one payee has withdrawn");[m
+         willManuscript.executed = false;[m
+         willManuscript.unlockTime = 0;[m
+     }[m

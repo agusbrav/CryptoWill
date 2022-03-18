@@ -35,10 +35,12 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 id;
     }
 
+    /// @dev bytes32 constants for specific Roles according to AccessControl
     bytes32 private constant EXECUTOR = keccak256("EXECUTOR");
     bytes32 private constant PAYEE = keccak256("PAYEE");
     bytes32 private constant OWNER = keccak256("OWNER");
 
+    /// @dev 
     uint8 private totalPayees;
 
     /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)
@@ -400,8 +402,11 @@ contract Will is AccessControl, ReentrancyGuard {
     /**
      * @notice If the will has been executed and the Testator wants to revert it he can call this function.
      * The executed will bool and the unlockTime will be set to 0.
+     * If at least one payee withdraw its shares you wont be able to call this function anymore since the contract Will
+     * its already executing.
      */
     function resetWill() public onlyRole(OWNER) {
+        require(willManuscript.payees.length == totalPayees,"At least one payee has withdrawn");
         willManuscript.executed = false;
         willManuscript.unlockTime = 0;
     }

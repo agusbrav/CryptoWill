@@ -22,11 +22,13 @@ export declare namespace Will {
   export type WillTokenStruct = {
     token: string;
     correspondingTokens: BigNumberish;
+    tokenBalance: BigNumberish;
   };
 
-  export type WillTokenStructOutput = [string, BigNumber] & {
+  export type WillTokenStructOutput = [string, BigNumber, BigNumber] & {
     token: string;
     correspondingTokens: BigNumber;
+    tokenBalance: BigNumber;
   };
 }
 
@@ -34,9 +36,7 @@ export interface WillInterface extends utils.Interface {
   contractName: "Will";
   functions: {
     "DEFAULT_ADMIN_ROLE()": FunctionFragment;
-    "EXECUTOR()": FunctionFragment;
-    "OWNER()": FunctionFragment;
-    "PAYEE()": FunctionFragment;
+    "checkedPayees(uint256)": FunctionFragment;
     "correspondingEth()": FunctionFragment;
     "executeWill()": FunctionFragment;
     "executorFee()": FunctionFragment;
@@ -63,9 +63,10 @@ export interface WillInterface extends utils.Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: "EXECUTOR", values?: undefined): string;
-  encodeFunctionData(functionFragment: "OWNER", values?: undefined): string;
-  encodeFunctionData(functionFragment: "PAYEE", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "checkedPayees",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "correspondingEth",
     values?: undefined
@@ -145,9 +146,10 @@ export interface WillInterface extends utils.Interface {
     functionFragment: "DEFAULT_ADMIN_ROLE",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "EXECUTOR", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "OWNER", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "PAYEE", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "checkedPayees",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "correspondingEth",
     data: BytesLike
@@ -206,6 +208,8 @@ export interface WillInterface extends utils.Interface {
     "ApprovedPayees(address[])": EventFragment;
     "ChangedExecutor(address,address)": EventFragment;
     "ERC20TokensSupplied(tuple[])": EventFragment;
+    "NFTsApproved(address,uint256[])": EventFragment;
+    "PayeeChecked(address)": EventFragment;
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
     "RoleRevoked(bytes32,address,address)": EventFragment;
@@ -217,6 +221,8 @@ export interface WillInterface extends utils.Interface {
   getEvent(nameOrSignatureOrTopic: "ApprovedPayees"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "ChangedExecutor"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "ERC20TokensSupplied"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "NFTsApproved"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "PayeeChecked"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleAdminChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleGranted"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleRevoked"): EventFragment;
@@ -243,6 +249,17 @@ export type ERC20TokensSuppliedEvent = TypedEvent<
 
 export type ERC20TokensSuppliedEventFilter =
   TypedEventFilter<ERC20TokensSuppliedEvent>;
+
+export type NFTsApprovedEvent = TypedEvent<
+  [string, BigNumber[]],
+  { _nftContract: string; _tokenId: BigNumber[] }
+>;
+
+export type NFTsApprovedEventFilter = TypedEventFilter<NFTsApprovedEvent>;
+
+export type PayeeCheckedEvent = TypedEvent<[string], { _payee: string }>;
+
+export type PayeeCheckedEventFilter = TypedEventFilter<PayeeCheckedEvent>;
 
 export type RoleAdminChangedEvent = TypedEvent<
   [string, string, string],
@@ -338,11 +355,10 @@ export interface Will extends BaseContract {
   functions: {
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<[string]>;
 
-    EXECUTOR(overrides?: CallOverrides): Promise<[string]>;
-
-    OWNER(overrides?: CallOverrides): Promise<[string]>;
-
-    PAYEE(overrides?: CallOverrides): Promise<[string]>;
+    checkedPayees(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
 
     correspondingEth(overrides?: CallOverrides): Promise<[BigNumber]>;
 
@@ -439,7 +455,11 @@ export interface Will extends BaseContract {
       arg0: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, BigNumber] & { token: string; correspondingTokens: BigNumber }
+      [string, BigNumber, BigNumber] & {
+        token: string;
+        correspondingTokens: BigNumber;
+        tokenBalance: BigNumber;
+      }
     >;
 
     withdrawShares(
@@ -449,11 +469,7 @@ export interface Will extends BaseContract {
 
   DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<string>;
 
-  EXECUTOR(overrides?: CallOverrides): Promise<string>;
-
-  OWNER(overrides?: CallOverrides): Promise<string>;
-
-  PAYEE(overrides?: CallOverrides): Promise<string>;
+  checkedPayees(arg0: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
   correspondingEth(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -550,7 +566,11 @@ export interface Will extends BaseContract {
     arg0: BigNumberish,
     overrides?: CallOverrides
   ): Promise<
-    [string, BigNumber] & { token: string; correspondingTokens: BigNumber }
+    [string, BigNumber, BigNumber] & {
+      token: string;
+      correspondingTokens: BigNumber;
+      tokenBalance: BigNumber;
+    }
   >;
 
   withdrawShares(
@@ -560,11 +580,10 @@ export interface Will extends BaseContract {
   callStatic: {
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<string>;
 
-    EXECUTOR(overrides?: CallOverrides): Promise<string>;
-
-    OWNER(overrides?: CallOverrides): Promise<string>;
-
-    PAYEE(overrides?: CallOverrides): Promise<string>;
+    checkedPayees(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string>;
 
     correspondingEth(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -650,7 +669,11 @@ export interface Will extends BaseContract {
       arg0: BigNumberish,
       overrides?: CallOverrides
     ): Promise<
-      [string, BigNumber] & { token: string; correspondingTokens: BigNumber }
+      [string, BigNumber, BigNumber] & {
+        token: string;
+        correspondingTokens: BigNumber;
+        tokenBalance: BigNumber;
+      }
     >;
 
     withdrawShares(overrides?: CallOverrides): Promise<void>;
@@ -673,6 +696,15 @@ export interface Will extends BaseContract {
       _tokens?: null
     ): ERC20TokensSuppliedEventFilter;
     ERC20TokensSupplied(_tokens?: null): ERC20TokensSuppliedEventFilter;
+
+    "NFTsApproved(address,uint256[])"(
+      _nftContract?: null,
+      _tokenId?: null
+    ): NFTsApprovedEventFilter;
+    NFTsApproved(_nftContract?: null, _tokenId?: null): NFTsApprovedEventFilter;
+
+    "PayeeChecked(address)"(_payee?: null): PayeeCheckedEventFilter;
+    PayeeChecked(_payee?: null): PayeeCheckedEventFilter;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)"(
       role?: BytesLike | null,
@@ -762,11 +794,10 @@ export interface Will extends BaseContract {
   estimateGas: {
     DEFAULT_ADMIN_ROLE(overrides?: CallOverrides): Promise<BigNumber>;
 
-    EXECUTOR(overrides?: CallOverrides): Promise<BigNumber>;
-
-    OWNER(overrides?: CallOverrides): Promise<BigNumber>;
-
-    PAYEE(overrides?: CallOverrides): Promise<BigNumber>;
+    checkedPayees(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
     correspondingEth(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -867,11 +898,10 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    EXECUTOR(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    OWNER(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    PAYEE(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+    checkedPayees(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
 
     correspondingEth(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
