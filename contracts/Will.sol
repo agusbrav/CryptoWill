@@ -193,6 +193,8 @@ contract Will is AccessControl, ReentrancyGuard {
     /**
      * @dev After setting up the will you can load the tokens the Will contract will manage
      * You can set up to 50 different tokens
+     * Front end should call the approve function for the contract addresses in _tokenContract before calling this function
+     * If the owner approves the token the function will check if the allowence is correctly set to be pushed in to the will.
      * @notice From this function you can add Tokens contract to your will.
      * You need to approve the Token allowance in order to be added to the will.
      * @param _tokenContract The ERC20 contracts you want to add to this Will
@@ -209,7 +211,6 @@ contract Will is AccessControl, ReentrancyGuard {
         IERC20 tempWillToken;
         for (uint256 i = 0; i < _tokenContract.length; i++) {
             tempWillToken = IERC20(_tokenContract[i]);
-            tempWillToken.approve(address(this), 2 ^ (256 - 1));
             if (
                 tempWillToken.allowance(
                     willManuscript.testator,
