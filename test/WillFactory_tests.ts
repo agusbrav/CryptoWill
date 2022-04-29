@@ -15,14 +15,16 @@ describe("Will Factory Tests", function () {
   let lawyer: SignerWithAddress;
   let owner2: SignerWithAddress;
   let owner3: SignerWithAddress;
+  let owner4: SignerWithAddress;
   let external: SignerWithAddress;
   let payee: SignerWithAddress[];
   let contract: any;
   let WillFactory;
-  let createWill;
+  let createWill: any;
 
   before(async function () {
-    [owner, lawyer, owner2, owner3 , external, ...payee] = await ethers.getSigners();
+    [owner, lawyer, owner2, owner3, owner4, external, ...payee] =
+      await ethers.getSigners();
     WillFactory = await ethers.getContractFactory("WillFactory");
     contract = await WillFactory.deploy();
     await contract.deployed();
@@ -31,9 +33,7 @@ describe("Will Factory Tests", function () {
   it("Should read from the willOwners mapping", async function () {
     createWill = await contract.createWillContract(lawyer.address, 60);
     await createWill.wait(); /// wait until the transaction is mined
-    expect(await contract.checkWills(owner.address)).to.not.equal(
-      zero_address
-    );
+    expect(await contract.checkWills(owner.address)).to.not.equal(zero_address);
   });
   it("Should revert if you already have a will contract created", async function () {
     await expect(
@@ -55,10 +55,15 @@ describe("Will Factory Tests", function () {
   });
   it("Should revert with wrong time set up > 365", async function () {
     await expect(
-      contract
-        .connect(owner3)
-        .createWillContract(lawyer.address, 32000000)
+      contract.connect(owner3).createWillContract(lawyer.address, 32000000)
     ).to.be.revertedWith(ERROR_MSG[3]);
     console.log(ERROR_MSG[3]);
+  });
+  it("Calling CheckWills should emit WillCreated event with the contract new address", async function () {
+    createWill = await contract.connect(owner4).createWillContract(lawyer.address, 60);
+    await createWill.wait(); /// wait until the transaction is mined
+    console.log("Will created", createWill.address)
+    await expect(contract.checkWills(owner4.address))
+      .to.emit(contract, "WillCreated")
   });
 });
