@@ -2,12 +2,10 @@
 /* tslint:disable */
 /* eslint-disable */
 export type { AccessControl } from "./AccessControl";
-export type { CryptoWillToken } from "./CryptoWillToken";
 export type { ERC165 } from "./ERC165";
 export type { ERC20 } from "./ERC20";
 export type { ERC721 } from "./ERC721";
 export { AccessControl__factory } from "./factories/AccessControl__factory";
-export { CryptoWillToken__factory } from "./factories/CryptoWillToken__factory";
 export { ERC165__factory } from "./factories/ERC165__factory";
 export { ERC20__factory } from "./factories/ERC20__factory";
 export { ERC721__factory } from "./factories/ERC721__factory";

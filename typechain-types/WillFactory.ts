@@ -40,16 +40,13 @@ export interface WillFactoryInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "willOwners", data: BytesLike): Result;
 
   events: {
-    "WillCreated(address,address)": EventFragment;
+    "WillCreated(address)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "WillCreated"): EventFragment;
 }
 
-export type WillCreatedEvent = TypedEvent<
-  [string, string],
-  { _owner: string; _newWIll: string }
->;
+export type WillCreatedEvent = TypedEvent<[string], { _newWIll: string }>;
 
 export type WillCreatedEventFilter = TypedEventFilter<WillCreatedEvent>;
 
@@ -109,7 +106,7 @@ export interface WillFactory extends BaseContract {
   willOwners(arg0: string, overrides?: CallOverrides): Promise<string>;
 
   callStatic: {
-    checkWills(_address: string, overrides?: CallOverrides): Promise<string>;
+    checkWills(_address: string, overrides?: CallOverrides): Promise<void>;
 
     createWillContract(
       _lawyer: string,
@@ -121,11 +118,8 @@ export interface WillFactory extends BaseContract {
   };
 
   filters: {
-    "WillCreated(address,address)"(
-      _owner?: null,
-      _newWIll?: null
-    ): WillCreatedEventFilter;
-    WillCreated(_owner?: null, _newWIll?: null): WillCreatedEventFilter;
+    "WillCreated(address)"(_newWIll?: null): WillCreatedEventFilter;
+    WillCreated(_newWIll?: null): WillCreatedEventFilter;
   };
 
   estimateGas: {

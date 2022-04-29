@@ -208,56 +208,69 @@ export interface WillInterface extends utils.Interface {
     "ApprovedPayees(address[])": EventFragment;
     "ChangedExecutor(address,address)": EventFragment;
     "ERC20TokensSupplied(tuple[])": EventFragment;
+    "NFTWithdrawn(address,address,uint256)": EventFragment;
     "NFTsApproved(address,uint256[])": EventFragment;
     "PayeeChecked(address)": EventFragment;
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
     "RoleRevoked(bytes32,address,address)": EventFragment;
-    "SharesWithdrawn(uint256,uint256,uint256,address,tuple[])": EventFragment;
+    "SharesWithdrawn(uint256,address)": EventFragment;
+    "TokenWithdrawn(address,address,uint256)": EventFragment;
     "WillExecuted(bool,uint256,address,uint256,uint256,uint256)": EventFragment;
     "WillReport(address,address,uint256,bool,uint256,uint256,uint256)": EventFragment;
+    "WillReseted(uint256)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "ApprovedPayees"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "ChangedExecutor"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "ERC20TokensSupplied"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "NFTWithdrawn"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "NFTsApproved"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "PayeeChecked"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleAdminChanged"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleGranted"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RoleRevoked"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "SharesWithdrawn"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "TokenWithdrawn"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "WillExecuted"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "WillReport"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "WillReseted"): EventFragment;
 }
 
-export type ApprovedPayeesEvent = TypedEvent<[string[]], { _payees: string[] }>;
+export type ApprovedPayeesEvent = TypedEvent<[string[]], { payees: string[] }>;
 
 export type ApprovedPayeesEventFilter = TypedEventFilter<ApprovedPayeesEvent>;
 
 export type ChangedExecutorEvent = TypedEvent<
   [string, string],
-  { _oldExecutor: string; _newExecutor: string }
+  { oldExecutor: string; newExecutor: string }
 >;
 
 export type ChangedExecutorEventFilter = TypedEventFilter<ChangedExecutorEvent>;
 
 export type ERC20TokensSuppliedEvent = TypedEvent<
   [Will.WillTokenStructOutput[]],
-  { _tokens: Will.WillTokenStructOutput[] }
+  { tokens: Will.WillTokenStructOutput[] }
 >;
 
 export type ERC20TokensSuppliedEventFilter =
   TypedEventFilter<ERC20TokensSuppliedEvent>;
 
+export type NFTWithdrawnEvent = TypedEvent<
+  [string, string, BigNumber],
+  { nft: string; caller: string; id: BigNumber }
+>;
+
+export type NFTWithdrawnEventFilter = TypedEventFilter<NFTWithdrawnEvent>;
+
 export type NFTsApprovedEvent = TypedEvent<
   [string, BigNumber[]],
-  { _nftContract: string; _tokenId: BigNumber[] }
+  { nftContract: string; tokenId: BigNumber[] }
 >;
 
 export type NFTsApprovedEventFilter = TypedEventFilter<NFTsApprovedEvent>;
 
-export type PayeeCheckedEvent = TypedEvent<[string], { _payee: string }>;
+export type PayeeCheckedEvent = TypedEvent<[string], { payee: string }>;
 
 export type PayeeCheckedEventFilter = TypedEventFilter<PayeeCheckedEvent>;
 
@@ -284,27 +297,28 @@ export type RoleRevokedEvent = TypedEvent<
 export type RoleRevokedEventFilter = TypedEventFilter<RoleRevokedEvent>;
 
 export type SharesWithdrawnEvent = TypedEvent<
-  [BigNumber, BigNumber, BigNumber, string, Will.WillTokenStructOutput[]],
-  {
-    _totalAmount: BigNumber;
-    _executorFee: BigNumber;
-    _ethPerPayee: BigNumber;
-    _caller: string;
-    _tokens: Will.WillTokenStructOutput[];
-  }
+  [BigNumber, string],
+  { ethPerPayee: BigNumber; caller: string }
 >;
 
 export type SharesWithdrawnEventFilter = TypedEventFilter<SharesWithdrawnEvent>;
 
+export type TokenWithdrawnEvent = TypedEvent<
+  [string, string, BigNumber],
+  { token: string; caller: string; amount: BigNumber }
+>;
+
+export type TokenWithdrawnEventFilter = TypedEventFilter<TokenWithdrawnEvent>;
+
 export type WillExecutedEvent = TypedEvent<
   [boolean, BigNumber, string, BigNumber, BigNumber, BigNumber],
   {
-    _exec: boolean;
-    _time: BigNumber;
-    _executor: string;
-    _unlockTime: BigNumber;
-    _totalBalance: BigNumber;
-    _numberOfPayees: BigNumber;
+    exec: boolean;
+    time: BigNumber;
+    executor: string;
+    unlockTime: BigNumber;
+    totalBalance: BigNumber;
+    numberOfPayees: BigNumber;
   }
 >;
 
@@ -313,17 +327,24 @@ export type WillExecutedEventFilter = TypedEventFilter<WillExecutedEvent>;
 export type WillReportEvent = TypedEvent<
   [string, string, BigNumber, boolean, BigNumber, BigNumber, BigNumber],
   {
-    _owner: string;
-    _executor: string;
-    _unlockTime: BigNumber;
-    _withdrawAvailable: boolean;
-    _totalBalance: BigNumber;
-    _correspondingEth: BigNumber;
-    _executorFee: BigNumber;
+    owner: string;
+    executor: string;
+    unlockTime: BigNumber;
+    withdrawAvailable: boolean;
+    totalBalance: BigNumber;
+    correspondingEth: BigNumber;
+    executorFee: BigNumber;
   }
 >;
 
 export type WillReportEventFilter = TypedEventFilter<WillReportEvent>;
+
+export type WillResetedEvent = TypedEvent<
+  [BigNumber],
+  { timeStamp: BigNumber }
+>;
+
+export type WillResetedEventFilter = TypedEventFilter<WillResetedEvent>;
 
 export interface Will extends BaseContract {
   contractName: "Will";
@@ -680,31 +701,38 @@ export interface Will extends BaseContract {
   };
 
   filters: {
-    "ApprovedPayees(address[])"(_payees?: null): ApprovedPayeesEventFilter;
-    ApprovedPayees(_payees?: null): ApprovedPayeesEventFilter;
+    "ApprovedPayees(address[])"(payees?: null): ApprovedPayeesEventFilter;
+    ApprovedPayees(payees?: null): ApprovedPayeesEventFilter;
 
     "ChangedExecutor(address,address)"(
-      _oldExecutor?: null,
-      _newExecutor?: null
+      oldExecutor?: null,
+      newExecutor?: null
     ): ChangedExecutorEventFilter;
     ChangedExecutor(
-      _oldExecutor?: null,
-      _newExecutor?: null
+      oldExecutor?: null,
+      newExecutor?: null
     ): ChangedExecutorEventFilter;
 
     "ERC20TokensSupplied(tuple[])"(
-      _tokens?: null
+      tokens?: null
     ): ERC20TokensSuppliedEventFilter;
-    ERC20TokensSupplied(_tokens?: null): ERC20TokensSuppliedEventFilter;
+    ERC20TokensSupplied(tokens?: null): ERC20TokensSuppliedEventFilter;
+
+    "NFTWithdrawn(address,address,uint256)"(
+      nft?: null,
+      caller?: null,
+      id?: null
+    ): NFTWithdrawnEventFilter;
+    NFTWithdrawn(nft?: null, caller?: null, id?: null): NFTWithdrawnEventFilter;
 
     "NFTsApproved(address,uint256[])"(
-      _nftContract?: null,
-      _tokenId?: null
+      nftContract?: null,
+      tokenId?: null
     ): NFTsApprovedEventFilter;
-    NFTsApproved(_nftContract?: null, _tokenId?: null): NFTsApprovedEventFilter;
+    NFTsApproved(nftContract?: null, tokenId?: null): NFTsApprovedEventFilter;
 
-    "PayeeChecked(address)"(_payee?: null): PayeeCheckedEventFilter;
-    PayeeChecked(_payee?: null): PayeeCheckedEventFilter;
+    "PayeeChecked(address)"(payee?: null): PayeeCheckedEventFilter;
+    PayeeChecked(payee?: null): PayeeCheckedEventFilter;
 
     "RoleAdminChanged(bytes32,bytes32,bytes32)"(
       role?: BytesLike | null,
@@ -739,56 +767,64 @@ export interface Will extends BaseContract {
       sender?: string | null
     ): RoleRevokedEventFilter;
 
-    "SharesWithdrawn(uint256,uint256,uint256,address,tuple[])"(
-      _totalAmount?: null,
-      _executorFee?: null,
-      _ethPerPayee?: null,
-      _caller?: null,
-      _tokens?: null
+    "SharesWithdrawn(uint256,address)"(
+      ethPerPayee?: null,
+      caller?: null
     ): SharesWithdrawnEventFilter;
     SharesWithdrawn(
-      _totalAmount?: null,
-      _executorFee?: null,
-      _ethPerPayee?: null,
-      _caller?: null,
-      _tokens?: null
+      ethPerPayee?: null,
+      caller?: null
     ): SharesWithdrawnEventFilter;
 
+    "TokenWithdrawn(address,address,uint256)"(
+      token?: null,
+      caller?: null,
+      amount?: null
+    ): TokenWithdrawnEventFilter;
+    TokenWithdrawn(
+      token?: null,
+      caller?: null,
+      amount?: null
+    ): TokenWithdrawnEventFilter;
+
     "WillExecuted(bool,uint256,address,uint256,uint256,uint256)"(
-      _exec?: null,
-      _time?: null,
-      _executor?: null,
-      _unlockTime?: null,
-      _totalBalance?: null,
-      _numberOfPayees?: null
+      exec?: null,
+      time?: null,
+      executor?: null,
+      unlockTime?: null,
+      totalBalance?: null,
+      numberOfPayees?: null
     ): WillExecutedEventFilter;
     WillExecuted(
-      _exec?: null,
-      _time?: null,
-      _executor?: null,
-      _unlockTime?: null,
-      _totalBalance?: null,
-      _numberOfPayees?: null
+      exec?: null,
+      time?: null,
+      executor?: null,
+      unlockTime?: null,
+      totalBalance?: null,
+      numberOfPayees?: null
     ): WillExecutedEventFilter;
 
     "WillReport(address,address,uint256,bool,uint256,uint256,uint256)"(
-      _owner?: null,
-      _executor?: null,
-      _unlockTime?: null,
-      _withdrawAvailable?: null,
-      _totalBalance?: null,
-      _correspondingEth?: null,
-      _executorFee?: null
+      owner?: null,
+      executor?: null,
+      unlockTime?: null,
+      withdrawAvailable?: null,
+      totalBalance?: null,
+      correspondingEth?: null,
+      executorFee?: null
     ): WillReportEventFilter;
     WillReport(
-      _owner?: null,
-      _executor?: null,
-      _unlockTime?: null,
-      _withdrawAvailable?: null,
-      _totalBalance?: null,
-      _correspondingEth?: null,
-      _executorFee?: null
+      owner?: null,
+      executor?: null,
+      unlockTime?: null,
+      withdrawAvailable?: null,
+      totalBalance?: null,
+      correspondingEth?: null,
+      executorFee?: null
     ): WillReportEventFilter;
+
+    "WillReseted(uint256)"(timeStamp?: null): WillResetedEventFilter;
+    WillReseted(timeStamp?: null): WillResetedEventFilter;
   };
 
   estimateGas: {

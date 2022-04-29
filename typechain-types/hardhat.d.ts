@@ -60,10 +60,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IERC165__factory>;
     getContractFactory(
-      name: "CryptoWillToken",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.CryptoWillToken__factory>;
-    getContractFactory(
       name: "Will",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.Will__factory>;
@@ -132,11 +128,6 @@ declare module "hardhat/types/runtime" {
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.IERC165>;
-    getContractAt(
-      name: "CryptoWillToken",
-      address: string,
-      signer?: ethers.Signer
-    ): Promise<Contracts.CryptoWillToken>;
     getContractAt(
       name: "Will",
       address: string,
