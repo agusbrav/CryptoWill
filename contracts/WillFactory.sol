@@ -8,7 +8,7 @@ import "./Will.sol";
  */
 contract WillFactory {
     mapping(address => address) public willOwners; //Owner address to contract address
-    event WillCreated(address _owner, address _newWIll);
+    event WillCreated(address _newWIll);
 
     function createWillContract(address payable _lawyer, uint256 _lockTime)
         external
@@ -23,16 +23,15 @@ contract WillFactory {
         require(_lockTime < 366 days, "The maximun time is 365 days");
         Will will = new Will(payable(msg.sender), _lawyer, _lockTime);
         willOwners[msg.sender] = address(will);
-        emit WillCreated(msg.sender, willOwners[msg.sender]);
+        emit WillCreated(willOwners[msg.sender]);
         return willOwners[msg.sender];
     }
 
-    function checkWills(address _address) external returns (address) {
+    function checkWills(address _address) external {
         require(
             willOwners[_address] != address(0),
             "You do not have a deployed Will"
         );
-        emit WillCreated(_address, willOwners[_address]);
-        return willOwners[_address];
+        emit WillCreated(willOwners[_address]);
     }
 }

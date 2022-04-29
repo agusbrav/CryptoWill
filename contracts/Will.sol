@@ -58,13 +58,13 @@ contract Will is AccessControl, ReentrancyGuard {
      * Can be called with WillStatus function or its called automatically after setting up the will
      */
     event WillReport(
-        address _owner,
-        address _executor,
-        uint256 _unlockTime,
-        bool _withdrawAvailable,
-        uint256 _totalBalance,
-        uint256 _correspondingEth,
-        uint256 _executorFee
+        address owner,
+        address executor,
+        uint256 unlockTime,
+        bool withdrawAvailable,
+        uint256 totalBalance,
+        uint256 correspondingEth,
+        uint256 executorFee
     );
 
     /**
@@ -72,12 +72,12 @@ contract Will is AccessControl, ReentrancyGuard {
      * the executeWill function to start counting looked time in order to claim the assets
      */
     event WillExecuted(
-        bool _exec,
-        uint256 _time,
-        address _executor,
-        uint256 _unlockTime,
-        uint256 _totalBalance,
-        uint256 _numberOfPayees
+        bool exec,
+        uint256 time,
+        address executor,
+        uint256 unlockTime,
+        uint256 totalBalance,
+        uint256 numberOfPayees
     );
 
     /**
@@ -87,23 +87,34 @@ contract Will is AccessControl, ReentrancyGuard {
      * and destroy the Will. This event its emmited once and after that the contract will be destroyed.
      */
     event SharesWithdrawn(
-        uint256 _totalAmount,
-        uint256 _executorFee,
-        uint256 _ethPerPayee,
-        address _caller,
-        WillToken[] _tokens
+        uint256 ethPerPayee,
+        address caller
     );
 
+    event TokenWithdrawn(
+        address token,
+        address caller,
+        uint256 amount
+    );
+
+    event NFTWithdrawn(
+        address nft,
+        address caller,
+        uint256 id
+    );
+
+    event WillReseted(uint256 timeStamp);
+
     /// Event emited for each payee setted up by the owner in the willStatus function
-    event ApprovedPayees(address[] _payees);
+    event ApprovedPayees(address[] payees);
     /// Event emited after resetting the contract with resetWill and changing executor.
-    event ChangedExecutor(address _oldExecutor, address _newExecutor);
+    event ChangedExecutor(address oldExecutor, address newExecutor);
     /// Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
-    event ERC20TokensSupplied(WillToken[] _tokens);
+    event ERC20TokensSupplied(WillToken[] tokens);
     /// Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
-    event PayeeChecked(address _payee);
+    event PayeeChecked(address payee);
     /// Event emited after approving Tokens from NFT Contract with _tokenId array.
-    event NFTsApproved (IERC721 _nftContract, uint256[] _tokenId);
+    event NFTsApproved (IERC721 nftContract, uint256[] tokenId);
 
     /**
      * @dev The constructor sets up the roles and roles admin
@@ -166,7 +177,7 @@ contract Will is AccessControl, ReentrancyGuard {
         onlyRole(OWNER)
     {
         require(
-                msg.value + address(this).balance > 0.2 ether,
+                msg.value + address(this).balance >= 0.2 ether,
             "Minumun balance must be 0.2 ETH"
         );
         require(
@@ -174,8 +185,8 @@ contract Will is AccessControl, ReentrancyGuard {
             "Max payees are 50"
         );
         require(!willManuscript.executed, "Will has already been executed");
-
-        for (uint256 i = 0; i < _payeesAdd.length; i++) {
+        uint256 _length = _payeesAdd.length;
+        for (uint256 i = 0; i < _length; ++i) {
             require(
                 _payeesAdd[i] != address(0),
                 "The address 0x0 cant be a payee"
@@ -209,7 +220,8 @@ contract Will is AccessControl, ReentrancyGuard {
     {
         require(willTokens.length <= 50, "The max number of tokens is 50");
         IERC20 tempWillToken;
-        for (uint256 i = 0; i < _tokenContract.length; i++) {
+        uint256 _length = _tokenContract.length;
+        for (uint256 i = 0; i < _length; i++) {
             tempWillToken = IERC20(_tokenContract[i]);
             if (
                 tempWillToken.allowance(
@@ -243,7 +255,8 @@ contract Will is AccessControl, ReentrancyGuard {
     ) public onlyRole(OWNER) activeWill {
         _checkRole(PAYEE, _payee);
         address payee = _payee;
-        for (uint256 i = 0; i < _tokenId.length; i++) {
+        uint _length = _tokenId.length;
+        for (uint256 i = 0; i < _length; i++) {
             IERC721 nftContract = IERC721(_nftContract);
             nftContract.approve(address(this), _tokenId[i]);
             if (nftContract.getApproved(_tokenId[i]) == address(this)){
@@ -274,12 +287,6 @@ contract Will is AccessControl, ReentrancyGuard {
         );
     }
 
-    /// @dev Call the functions that update the allocations, they will only update the tokens/nfts that changed balances.
-    function checkTokensAllocations(address _payeeChecking) private {
-        updateTokensAllocations();
-        updateNFTAllocations(_payeeChecking);
-    }
-
     /// @dev Updates the dividends of the payees and the lawer fee (10% of the total balance)
     function updateAllocations() private {
         executorFee = address(this).balance / 10;
@@ -294,7 +301,8 @@ contract Will is AccessControl, ReentrancyGuard {
      */
     function updateTokensAllocations() private {
         uint256 tokenBalanace;
-        for (uint256 i = 0; i < willTokens.length; i++) {
+        uint256 _length = willTokens.length;
+        for (uint256 i = 0; i < _length; ++i) {
             if (
                 willTokens[i].tokenBalance !=
                 IERC20(willTokens[i].token).balanceOf(
@@ -316,9 +324,10 @@ contract Will is AccessControl, ReentrancyGuard {
      * from the testator deletes them from the array of its corresponding payee.
      * In the case every NFT in the array its deleted the loop breaks for the payee.
      */
-    function updateNFTAllocations(address _payeeChecking) private {      
+    function updateNFTAllocations(address _payeeChecking) private { 
+            uint256 _k = willNFTs[_payeeChecking].length - 1;     
             for (
-                uint256 k = willNFTs[_payeeChecking].length - 1;
+                uint256 k = _k;
                 k >= 0;
                 k--
             ) {
@@ -345,12 +354,15 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
-        checkTokensAllocations(msg.sender);
+        updateTokensAllocations();
+        if (willNFTs[msg.sender].length>0)
+        updateNFTAllocations(msg.sender);
         bool sent;
         (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
         /// @dev Require added to prevent selfdestruct when an error happens
         require(sent, "Failed to send Ether");
-        for (uint256 j = 0; j < willTokens.length; j++) {
+        uint256 _lengthj = willTokens.length;
+        for (uint256 j = 0; j < _lengthj; ++j) {
             sent = willTokens[j].token.transferFrom(
                 address(willManuscript.testator),
                 msg.sender,
@@ -370,20 +382,20 @@ contract Will is AccessControl, ReentrancyGuard {
                     )
                 )
             );
+            emit TokenWithdrawn(address(willTokens[j].token), msg.sender, willTokens[j].correspondingTokens);
         }
-        for (uint256 k = 0; k < willNFTs[msg.sender].length; k++) {
+        uint256 _lengthk = willNFTs[msg.sender].length;
+        for (uint256 k = 0; k < _lengthk; k++) {
             willNFTs[msg.sender][k].nft.safeTransferFrom(
                 address(willManuscript.testator),
                 msg.sender,
                 willNFTs[msg.sender][k].id
             );
+            emit NFTWithdrawn(address(willNFTs[msg.sender][k].nft),msg.sender, willNFTs[msg.sender][k].id);
         }
         emit SharesWithdrawn(
-            address(this).balance,
-            executorFee,
             correspondingEth,
-            msg.sender,
-            willTokens
+            msg.sender
         );
         payeeChecked();
         if (willManuscript.payees.length == 0)
@@ -392,10 +404,11 @@ contract Will is AccessControl, ReentrancyGuard {
 
     /// @dev Deletes payee from array in willManuscript and revoke its PAYEE role.
     function payeeChecked() private {
-        for (uint8 i = 0; i < willManuscript.payees.length; i++)
+        uint256 _length = willManuscript.payees.length;
+        for (uint8 i = 0; i < _length; ++i)
             if (willManuscript.payees[i] == msg.sender) {
                 emit PayeeChecked(willManuscript.payees[i]);
-                revokeRole(PAYEE, willManuscript.payees[i]);
+                renounceRole(PAYEE, msg.sender);
                 delete willManuscript.payees[i];
             }
     }
@@ -410,6 +423,7 @@ contract Will is AccessControl, ReentrancyGuard {
         require(willManuscript.payees.length == totalPayees,"At least one payee has withdrawn");
         willManuscript.executed = false;
         willManuscript.unlockTime = 0;
+        emit WillReseted(block.timestamp);
     }
 
     /**
