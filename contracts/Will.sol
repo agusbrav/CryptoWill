@@ -354,6 +354,7 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
+        if (willTokens.length>0)
         updateTokensAllocations();
         if (willNFTs[msg.sender].length>0)
         updateNFTAllocations(msg.sender);
