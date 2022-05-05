@@ -40,7 +40,7 @@ contract Will is AccessControl, ReentrancyGuard {
     bytes32 private constant PAYEE = keccak256("PAYEE");
     bytes32 private constant OWNER = keccak256("OWNER");
 
-    /// @dev 
+    /// @dev
     uint8 private totalPayees;
 
     /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)
@@ -86,22 +86,11 @@ contract Will is AccessControl, ReentrancyGuard {
      * Any payee member in the contract will be able to call withdrawShares to claim its assets for everyone
      * and destroy the Will. This event its emmited once and after that the contract will be destroyed.
      */
-    event SharesWithdrawn(
-        uint256 ethPerPayee,
-        address caller
-    );
+    event SharesWithdrawn(uint256 ethPerPayee, address caller);
 
-    event TokenWithdrawn(
-        address token,
-        address caller,
-        uint256 amount
-    );
+    event TokenWithdrawn(address token, address caller, uint256 amount);
 
-    event NFTWithdrawn(
-        address nft,
-        address caller,
-        uint256 id
-    );
+    event NFTWithdrawn(address nft, address caller, uint256 id);
 
     event WillReseted(uint256 timeStamp);
 
@@ -114,7 +103,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /// Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address payee);
     /// Event emited after approving Tokens from NFT Contract with _tokenId array.
-    event NFTsApproved (IERC721 nftContract, uint256[] tokenId);
+    event NFTsApproved(IERC721 nftContract, uint256[] tokenId);
 
     /**
      * @dev The constructor sets up the roles and roles admin
@@ -177,7 +166,7 @@ contract Will is AccessControl, ReentrancyGuard {
         onlyRole(OWNER)
     {
         require(
-                msg.value + address(this).balance >= 0.2 ether,
+            msg.value + address(this).balance >= 0.2 ether,
             "Minumun balance must be 0.2 ETH"
         );
         require(
@@ -228,7 +217,7 @@ contract Will is AccessControl, ReentrancyGuard {
                     willManuscript.testator,
                     address(this)
                 ) == 2 ^ (256 - 1)
-            ){
+            ) {
                 willTokens.push(
                     WillToken(
                         tempWillToken,
@@ -237,7 +226,7 @@ contract Will is AccessControl, ReentrancyGuard {
                     )
                 );
                 emit ERC20TokensSupplied(willTokens);
-                }
+            }
         }
     }
 
@@ -255,13 +244,13 @@ contract Will is AccessControl, ReentrancyGuard {
     ) public onlyRole(OWNER) activeWill {
         _checkRole(PAYEE, _payee);
         address payee = _payee;
-        uint _length = _tokenId.length;
+        uint256 _length = _tokenId.length;
         for (uint256 i = 0; i < _length; i++) {
             IERC721 nftContract = IERC721(_nftContract);
             nftContract.approve(address(this), _tokenId[i]);
-            if (nftContract.getApproved(_tokenId[i]) == address(this)){
-            willNFTs[payee].push(WillNFT(nftContract, _tokenId[i]));
-            emit NFTsApproved (nftContract, _tokenId);
+            if (nftContract.getApproved(_tokenId[i]) == address(this)) {
+                willNFTs[payee].push(WillNFT(nftContract, _tokenId[i]));
+                emit NFTsApproved(nftContract, _tokenId);
             }
         }
     }
@@ -324,22 +313,18 @@ contract Will is AccessControl, ReentrancyGuard {
      * from the testator deletes them from the array of its corresponding payee.
      * In the case every NFT in the array its deleted the loop breaks for the payee.
      */
-    function updateNFTAllocations(address _payeeChecking) private { 
-            uint256 _k = willNFTs[_payeeChecking].length - 1;     
-            for (
-                uint256 k = _k;
-                k >= 0;
-                k--
+    function updateNFTAllocations(address _payeeChecking) private {
+        uint256 _k = willNFTs[_payeeChecking].length - 1;
+        for (uint256 k = _k; k >= 0; k--) {
+            if (
+                willNFTs[_payeeChecking][k].nft.ownerOf(
+                    willNFTs[_payeeChecking][k].id
+                ) != willManuscript.testator
             ) {
-                if (
-                    willNFTs[_payeeChecking][k].nft.ownerOf(
-                        willNFTs[_payeeChecking][k].id
-                    ) != willManuscript.testator
-                ) {
-                    delete willNFTs[_payeeChecking][k];
-                }
-                if (willNFTs[_payeeChecking].length == 0) break;
+                delete willNFTs[_payeeChecking][k];
             }
+            if (willNFTs[_payeeChecking].length == 0) break;
+        }
     }
 
     /**
@@ -354,50 +339,59 @@ contract Will is AccessControl, ReentrancyGuard {
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
         );
-        if (willTokens.length>0)
-        updateTokensAllocations();
-        if (willNFTs[msg.sender].length>0)
-        updateNFTAllocations(msg.sender);
         bool sent;
+        if (willTokens.length > 0) {
+            uint256 _lengthj = willTokens.length;
+            updateTokensAllocations();
+            for (uint256 j = 0; j < _lengthj; ++j) {
+                sent = willTokens[j].token.transferFrom(
+                    address(willManuscript.testator),
+                    msg.sender,
+                    willTokens[j].correspondingTokens
+                );
+                /// @dev Require added to prevent selfdestruct when an error happens
+                require(
+                    sent,
+                    string(
+                        abi.encodePacked(
+                            "Failed to send",
+                            Strings.toHexString(
+                                uint160(address(willTokens[j].token)),
+                                20
+                            ),
+                            "token"
+                        )
+                    )
+                );
+                emit TokenWithdrawn(
+                    address(willTokens[j].token),
+                    msg.sender,
+                    willTokens[j].correspondingTokens
+                );
+            }
+        }
+        if (willNFTs[msg.sender].length > 0) {
+            updateNFTAllocations(msg.sender);
+            uint256 _lengthk = willNFTs[msg.sender].length;
+            for (uint256 k = 0; k < _lengthk; k++) {
+                willNFTs[msg.sender][k].nft.safeTransferFrom(
+                    address(willManuscript.testator),
+                    msg.sender,
+                    willNFTs[msg.sender][k].id
+                );
+                emit NFTWithdrawn(
+                    address(willNFTs[msg.sender][k].nft),
+                    msg.sender,
+                    willNFTs[msg.sender][k].id
+                );
+            }
+        }
+
         (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
         /// @dev Require added to prevent selfdestruct when an error happens
         require(sent, "Failed to send Ether");
-        uint256 _lengthj = willTokens.length;
-        for (uint256 j = 0; j < _lengthj; ++j) {
-            sent = willTokens[j].token.transferFrom(
-                address(willManuscript.testator),
-                msg.sender,
-                willTokens[j].correspondingTokens
-            );
-            /// @dev Require added to prevent selfdestruct when an error happens
-            require(
-                sent,
-                string(
-                    abi.encodePacked(
-                        "Failed to send",
-                        Strings.toHexString(
-                            uint160(address(willTokens[j].token)),
-                            20
-                        ),
-                        "token"
-                    )
-                )
-            );
-            emit TokenWithdrawn(address(willTokens[j].token), msg.sender, willTokens[j].correspondingTokens);
-        }
-        uint256 _lengthk = willNFTs[msg.sender].length;
-        for (uint256 k = 0; k < _lengthk; k++) {
-            willNFTs[msg.sender][k].nft.safeTransferFrom(
-                address(willManuscript.testator),
-                msg.sender,
-                willNFTs[msg.sender][k].id
-            );
-            emit NFTWithdrawn(address(willNFTs[msg.sender][k].nft),msg.sender, willNFTs[msg.sender][k].id);
-        }
-        emit SharesWithdrawn(
-            correspondingEth,
-            msg.sender
-        );
+
+        emit SharesWithdrawn(correspondingEth, msg.sender);
         payeeChecked();
         if (willManuscript.payees.length == 0)
             selfdestruct(payable(willManuscript.executor));
@@ -421,7 +415,10 @@ contract Will is AccessControl, ReentrancyGuard {
      * its already executing.
      */
     function resetWill() public onlyRole(OWNER) {
-        require(willManuscript.payees.length == totalPayees,"At least one payee has withdrawn");
+        require(
+            willManuscript.payees.length == totalPayees,
+            "At least one payee has withdrawn"
+        );
         willManuscript.executed = false;
         willManuscript.unlockTime = 0;
         emit WillReseted(block.timestamp);
