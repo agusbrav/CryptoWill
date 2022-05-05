@@ -1,7 +1,7 @@
+import { getContractAddress } from "@ethersproject/address";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { getContractAddress } from "@ethersproject/address";
 
 describe("Will Factory Tests", function () {
   const ERROR_MSG: string[] = [
@@ -48,15 +48,18 @@ describe("Will Factory Tests", function () {
     console.log(ERROR_MSG[3]);
   });
   it("Calling CheckWills should emit WillCreated event with the contract new address", async function () {
-    createWill = await contract.connect(owner).createWillContract(lawyer.address, 60);
+    createWill = await contract
+      .connect(owner)
+      .createWillContract(lawyer.address, 60);
     await createWill.wait(); /// wait until the transaction is mined
     let willAddress = getContractAddress({
       from: contract.address,
-      nonce: 1
-    })
-    console.log("Will created", willAddress)
+      nonce: 1,
+    });
+    console.log("Will created", willAddress);
     await expect(contract.checkWills(owner.address))
-      .to.emit(contract, "WillCreated").withArgs(willAddress)
+      .to.emit(contract, "WillCreated")
+      .withArgs(willAddress);
   });
   it("Should revert if you already have a will contract created", async function () {
     await expect(
