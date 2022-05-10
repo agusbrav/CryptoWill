@@ -12,6 +12,7 @@ describe("CryptoWill tests", () => {
   let external: SignerWithAddress;
   let payee: SignerWithAddress[];
   let Tokens: string[];
+  let balanceOwner;
   const provider = ethers.provider;
   const ethValue = ethers.utils.parseEther("10.0");
   const correspondingTokens = ethers.utils.parseEther("3.0");
@@ -232,7 +233,9 @@ describe("CryptoWill tests", () => {
       );
       await expect(
         contract.connect(external).withdrawShares()
-      ).to.be.revertedWith(`AccessControl: account ${addrExt} is missing role ${payeeRole}`);
+      ).to.be.revertedWith(
+        `AccessControl: account ${addrExt} is missing role ${payeeRole}`
+      );
       console.log(
         "Payee addresses: ",
         payee[1].address,
@@ -293,25 +296,36 @@ describe("CryptoWill tests", () => {
   });
   describe("Function revokeWill", () => {
     it("Should revert when calling from other than owner", async () => {
-      await expect(
-        contract.connect(external).revokeWill()
-      ).to.be.revertedWith(`AccessControl: account ${addrExt} is missing role ${ownerRole}`);
+      await expect(contract.connect(external).revokeWill()).to.be.revertedWith(
+        `AccessControl: account ${addrExt} is missing role ${ownerRole}`
+      );
     });
     it("Should destroy contract when calling from owner", async () => {
-      const balanceOwner = await owner.getBalance();
+      balanceOwner = await owner.getBalance();
       console.log("Balance before any tx: ", balanceOwner);
-      let tx = await contract
-      .connect(owner)
-      .setWill([payee[1].address, payee[2].address, payee[3].address], {
-        value: ethValue,
-      });
-      console.log("Balance after set: ", await owner.getBalance()); 
-      const receipt = await tx.wait();
+      let tx1 = await contract
+        .connect(owner)
+        .setWill([payee[1].address, payee[2].address, payee[3].address], {
+          value: ethValue,
+        });
+      console.log("Balance after set: ", await owner.getBalance());
+      const receipt1 = await tx1.wait();
       const tx2 = await contract.connect(owner).revokeWill();
       const receipt2 = await tx2.wait();
-      console.log("Balance after revoke: ", await owner.getBalance());      
-      console.log(" Gas1: ", receipt.gasUsed, '\n', "Gas2: ", receipt2.gasUsed, '\n', "Total gas: ", receipt.gasUsed.add(receipt2.gasUsed));
-      const balanceAfterGas = balanceOwner.sub(BigNumber.from(receipt.gasUsed.add(receipt2.gasUsed)));
+      console.log("Balance after revoke: ", await owner.getBalance());
+      console.log(
+        " Gas1: ",
+        receipt1.gasUsed,
+        "\n",
+        "Gas2: ",
+        receipt2.gasUsed,
+        "\n",
+        "Total gas: ",
+        receipt1.gasUsed.add(receipt2.gasUsed)
+      );
+      const balanceAfterGas = balanceOwner.sub(
+        BigNumber.from(receipt1.gasUsed.add(receipt2.gasUsed))
+      );
       expect(await owner.getBalance()).to.be.equal(balanceAfterGas);
     });
   });

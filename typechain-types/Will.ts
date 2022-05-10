@@ -218,7 +218,7 @@ export interface WillInterface extends utils.Interface {
     "TokenWithdrawn(address,address,uint256)": EventFragment;
     "WillExecuted(bool,uint256,address,uint256,uint256,uint256)": EventFragment;
     "WillReport(address,address,uint256,bool,uint256,uint256,uint256)": EventFragment;
-    "WillReseted(uint256)": EventFragment;
+    "WillReseted()": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "ApprovedPayees"): EventFragment;
@@ -339,10 +339,7 @@ export type WillReportEvent = TypedEvent<
 
 export type WillReportEventFilter = TypedEventFilter<WillReportEvent>;
 
-export type WillResetedEvent = TypedEvent<
-  [BigNumber],
-  { timeStamp: BigNumber }
->;
+export type WillResetedEvent = TypedEvent<[], {}>;
 
 export type WillResetedEventFilter = TypedEventFilter<WillResetedEvent>;
 
@@ -823,8 +820,8 @@ export interface Will extends BaseContract {
       executorFee?: null
     ): WillReportEventFilter;
 
-    "WillReseted(uint256)"(timeStamp?: null): WillResetedEventFilter;
-    WillReseted(timeStamp?: null): WillResetedEventFilter;
+    "WillReseted()"(): WillResetedEventFilter;
+    WillReseted(): WillResetedEventFilter;
   };
 
   estimateGas: {

@@ -92,7 +92,7 @@ contract Will is AccessControl, ReentrancyGuard {
 
     event NFTWithdrawn(address nft, address caller, uint256 id);
 
-    event WillReseted(uint256 timeStamp);
+    event WillReseted();
 
     /// Event emited for each payee setted up by the owner in the willStatus function
     event ApprovedPayees(address[] payees);
@@ -160,7 +160,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * You need to provide the contract at least 0.2 ETH in order to be able to set Payees
      */
     function setWill(address payable[] memory _payeesAdd)
-        public
+        external
         payable
         nonReentrant
         onlyRole(OWNER)
@@ -201,7 +201,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * After calling setWillWillToken with them the approve for each token will pop.
      */
     function setWillToken(IERC20[] memory _tokenContract)
-        public
+        external
         payable
         nonReentrant
         onlyRole(OWNER)
@@ -241,7 +241,7 @@ contract Will is AccessControl, ReentrancyGuard {
         IERC721 _nftContract,
         uint256[] memory _tokenId,
         address _payee
-    ) public onlyRole(OWNER) activeWill {
+    ) external onlyRole(OWNER) activeWill {
         _checkRole(PAYEE, _payee);
         address payee = _payee;
         uint256 _length = _tokenId.length;
@@ -261,7 +261,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * after its executed every payee would need to wait the locked time to withdraw.
      * If the owner its not deceased he can revert the executeWill and change the executor.
      */
-    function executeWill() public onlyRole(EXECUTOR) activeWill {
+    function executeWill() external onlyRole(EXECUTOR) activeWill {
         totalPayees = uint8(willManuscript.payees.length);
         willManuscript.unlockTime = block.timestamp + (willManuscript.waitTime);
         willManuscript.executed = true;
@@ -332,8 +332,9 @@ contract Will is AccessControl, ReentrancyGuard {
      * Each payee will need to call this function in order to claim its ETH, Tokens and NFTs.
      * When the last payee executes this function the contract will destroy itself
      * and transfer the remaining ETH (The executor fee) to the executor.
+     * TODO: Before transfering Tokens (ERC721) check ownership, if the owner isnt the testator slice from array.
      */
-    function withdrawShares() public onlyRole(PAYEE) {
+    function withdrawShares() external onlyRole(PAYEE) {
         require(willManuscript.executed, "Will has not been executed yet");
         require(
             block.timestamp >= willManuscript.unlockTime,
@@ -386,13 +387,11 @@ contract Will is AccessControl, ReentrancyGuard {
                 );
             }
         }
-
+        payeeChecked();
         (sent, ) = payable(msg.sender).call{value: correspondingEth}("");
         /// @dev Require added to prevent selfdestruct when an error happens
         require(sent, "Failed to send Ether");
-
         emit SharesWithdrawn(correspondingEth, msg.sender);
-        payeeChecked();
         if (willManuscript.payees.length == 0)
             selfdestruct(payable(willManuscript.executor));
     }
@@ -414,14 +413,14 @@ contract Will is AccessControl, ReentrancyGuard {
      * If at least one payee withdraw its shares you wont be able to call this function anymore since the contract Will
      * its already executing.
      */
-    function resetWill() public onlyRole(OWNER) {
+    function resetWill() external onlyRole(OWNER) {
         require(
             willManuscript.payees.length == totalPayees,
             "At least one payee has withdrawn"
         );
         willManuscript.executed = false;
         willManuscript.unlockTime = 0;
-        emit WillReseted(block.timestamp);
+        emit WillReseted();
     }
 
     /**
@@ -430,7 +429,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * @param _newExecutor The address of the new executor that will be assigned to this Will Contract.
      */
     function replaceExecutor(address payable _newExecutor)
-        public
+        external
         onlyRole(OWNER)
     {
         if (_newExecutor == willManuscript.executor)
@@ -447,7 +446,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * This function will transfer all ETH to the OWNER and destroy the will Contract.
      * @dev The approved tokens and NFTs should not be concerned since the contract will be no longer reacheable.
      */
-    function revokeWill() public onlyRole(OWNER) {
+    function revokeWill() external onlyRole(OWNER) {
         selfdestruct(payable(willManuscript.testator));
     }
 }
