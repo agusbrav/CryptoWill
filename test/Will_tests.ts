@@ -37,8 +37,8 @@ describe("CryptoWill tests", () => {
     Will = await ethers.getContractFactory("Will");
     contract = await Will.deploy(owner.address, executor.address, waitDays);
     await contract.deployed();
-    console.log("Will contract deployed to: ", contract.address, " address.");
   });
+
   describe("Function willStatus from Will contract", () => {
     it("Calling willStatus to check WillReport event", async () => {
       currentTime = Date.now() + 1000;
@@ -54,6 +54,7 @@ describe("CryptoWill tests", () => {
         .withArgs(owner.address, executor.address, 0, false, ethValue, 0, 0);
     });
   });
+
   describe("Function setWill Tests from Will Contract", () => {
     it("Payee adresses should be different from the executor address", async () => {
       ///Trying to add same address as executor (declared in the deployed contract) in the set will function
@@ -94,26 +95,6 @@ describe("CryptoWill tests", () => {
       )
         .to.emit(contract, "WillReport")
         .withArgs(owner.address, executor.address, 0, false, ethValue, 0, 0);
-      ///Logging results for visual check
-      console.log(
-        "Owner address: ",
-        owner.address,
-        "\n",
-        "Executor address: ",
-        executor.address,
-        "\n",
-        "Total balance: ",
-        ethers.utils.formatEther(ethValue),
-        "ETH",
-        "\n",
-        "Corresponding per payee: ",
-        ethers.utils.formatEther(correspondingTokens),
-        "ETH",
-        "\n",
-        "Executor fee: ",
-        ethers.utils.formatEther(executorFee),
-        "ETH"
-      );
     });
     it("Shouldnt be able to setWill With an address thats not the owner", async () => {
       ///Test the onlyRole modifier with an external address
@@ -122,12 +103,6 @@ describe("CryptoWill tests", () => {
         contract.connect(external).setWill([payee[1].address, payee[2].address])
       ).to.be.revertedWith(
         `AccessControl: account ${addrExt} is missing role ${ownerRole}`
-      );
-      console.log(
-        "Owner address:",
-        owner.address,
-        "Msg.sender address:",
-        external.address
       );
     });
     it("Shouldnt be able to load more than 50 payees", async () => {
@@ -150,19 +125,36 @@ describe("CryptoWill tests", () => {
       await expect(
         contract.setWill([payee[1].address, payee[2].address, payee[3].address])
       ).to.be.revertedWith("Max payees are 50");
-      console.log();
     });
   });
+
+  describe("Function setWillToken", () => {
+    it("Should revert when calling from other than owner", async () => {
+      await expect(contract.connect(external).revokeWill()).to.be.revertedWith(
+        `AccessControl: account ${addrExt} is missing role ${ownerRole}`
+      );
+    });
+    it("Should destroy contract when calling from owner", async () => {
+      balanceOwner = await owner.getBalance();
+      let tx1 = await contract
+        .connect(owner)
+        .setWill([payee[1].address, payee[2].address, payee[3].address], {
+          value: ethValue,
+        });
+      const receipt1 = await tx1.wait();
+      const tx2 = await contract.connect(owner).revokeWill();
+      const receipt2 = await tx2.wait();
+      const balanceAfterGas = balanceOwner.sub(
+        (receipt1.gasUsed.add(receipt2.gasUsed))
+      );
+      expect(await owner.getBalance()).to.be.equal(balanceAfterGas);
+    });
+  });
+  
   describe("Function executeWill from Will Contract", () => {
     it("Only the executor account should call this function", async () => {
       await expect(contract.connect(external).executeWill()).to.be.revertedWith(
         `AccessControl: account ${addrExt} is missing role ${executorRole}`
-      );
-      console.log(
-        "Executor address:",
-        executor.address,
-        "Msg.sender address:",
-        external.address
       );
     });
     it("Shouldnt be able to executeWill if it hasnt been set up", async () => {
@@ -189,20 +181,6 @@ describe("CryptoWill tests", () => {
           ethValue,
           3
         );
-      console.log(
-        "Will is executed: ",
-        true,
-        "\n",
-        "Executor address: ",
-        executor.address,
-        "\n",
-        "Total balance: ",
-        ethers.utils.formatEther(ethValue),
-        "ETH",
-        "\n",
-        "Unlock date: ",
-        new Date(waitTime + currentTime)
-      );
     });
     it("Shouldnt be able to executeWill if it was already executed", async () => {
       contract.setWill([payee[1].address, payee[2].address, payee[3].address], {
@@ -214,15 +192,16 @@ describe("CryptoWill tests", () => {
       );
     });
   });
-  describe("Function withdrawShares from Will Contratc", () => {
+
+  describe("Function resetWill should emit WillReseted", () => {
     it("Calling resetWill and changing executor", async () => {
       currentTime = Date.now() + 3600 * 24 * 2;
       await provider.send("evm_setNextBlockTimestamp", [currentTime]);
       await expect(contract.connect(owner).resetWill())
-        .to.emit(contract, "WillReseted")
-        .withArgs(Date.now);
+        .to.emit(contract, "WillReseted");
     });
   });
+
   describe("Function withdrawShares from Will Contract", () => {
     it("Only the payees account should call this function", async () => {
       await contract.setWill(
@@ -235,13 +214,6 @@ describe("CryptoWill tests", () => {
         contract.connect(external).withdrawShares()
       ).to.be.revertedWith(
         `AccessControl: account ${addrExt} is missing role ${payeeRole}`
-      );
-      console.log(
-        "Payee addresses: ",
-        payee[1].address,
-        "\n",
-        "Msg.sender address (Owner): ",
-        executor.address
       );
     });
     it("Shouldnt be able to withdrawShares if it hasnt been executed", async () => {
@@ -282,6 +254,7 @@ describe("CryptoWill tests", () => {
         .withArgs(correspondingTokens, payee[1].address);
     });
   });
+
   describe("Function replaceExecutor", () => {
     it("Calling with same executor should revert", async () => {
       await expect(
@@ -294,6 +267,7 @@ describe("CryptoWill tests", () => {
         .withArgs(executor.address, newExecutor.address);
     });
   });
+
   describe("Function revokeWill", () => {
     it("Should revert when calling from other than owner", async () => {
       await expect(contract.connect(external).revokeWill()).to.be.revertedWith(
@@ -302,29 +276,16 @@ describe("CryptoWill tests", () => {
     });
     it("Should destroy contract when calling from owner", async () => {
       balanceOwner = await owner.getBalance();
-      console.log("Balance before any tx: ", balanceOwner);
       let tx1 = await contract
         .connect(owner)
         .setWill([payee[1].address, payee[2].address, payee[3].address], {
           value: ethValue,
         });
-      console.log("Balance after set: ", await owner.getBalance());
       const receipt1 = await tx1.wait();
       const tx2 = await contract.connect(owner).revokeWill();
       const receipt2 = await tx2.wait();
-      console.log("Balance after revoke: ", await owner.getBalance());
-      console.log(
-        " Gas1: ",
-        receipt1.gasUsed,
-        "\n",
-        "Gas2: ",
-        receipt2.gasUsed,
-        "\n",
-        "Total gas: ",
-        receipt1.gasUsed.add(receipt2.gasUsed)
-      );
       const balanceAfterGas = balanceOwner.sub(
-        BigNumber.from(receipt1.gasUsed.add(receipt2.gasUsed))
+        (receipt1.gasUsed.add(receipt2.gasUsed))
       );
       expect(await owner.getBalance()).to.be.equal(balanceAfterGas);
     });

@@ -4,12 +4,6 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 describe("Will Factory Tests", function () {
-  const ERROR_MSG: string[] = [
-    "You already have a will contract",
-    "You do not have a deployed Will",
-    "The minimum time is 1 day",
-    "The maximun time is 365 days",
-  ];
   let owner: SignerWithAddress;
   let lawyer: SignerWithAddress;
   let owner2: SignerWithAddress;
@@ -31,40 +25,33 @@ describe("Will Factory Tests", function () {
   beforeEach(async function () {});
   it("Should read an empty address without contract", async function () {
     await expect(contract.checkWills(lawyer.address)).to.be.revertedWith(
-      ERROR_MSG[1]
+      "You do not have a deployed Will"
     );
-    console.log(ERROR_MSG[1]);
   });
   it("Should revert with wrong time set up < 1", async function () {
     await expect(
       contract.connect(owner2).createWillContract(lawyer.address, 0)
-    ).to.be.revertedWith(ERROR_MSG[2]);
-    console.log(ERROR_MSG[2]);
+    ).to.be.revertedWith("The minimum time is 1 day");
   });
   it("Should revert with wrong time set up > 365", async function () {
     await expect(
       contract.connect(owner3).createWillContract(lawyer.address, 32000000)
-    ).to.be.revertedWith(ERROR_MSG[3]);
-    console.log(ERROR_MSG[3]);
+    ).to.be.revertedWith("The maximun time is 365 days");
   });
-  it("Calling CheckWills should emit WillCreated event with the contract new address", async function () {
+  it("Calling CheckWills should return the contract new address", async function () {
     createWill = await contract
       .connect(owner)
       .createWillContract(lawyer.address, 60);
-    await createWill.wait(); /// wait until the transaction is mined
-    let willAddress = getContractAddress({
+    const willAddress = getContractAddress({
       from: contract.address,
       nonce: 1,
     });
-    console.log("Will created", willAddress);
-    await expect(contract.checkWills(owner.address))
-      .to.emit(contract, "WillCreated")
-      .withArgs(willAddress);
+    expect(await contract.checkWills(owner.address))
+      .to.be.equal(willAddress);
   });
   it("Should revert if you already have a will contract created", async function () {
     await expect(
       contract.connect(owner).createWillContract(lawyer.address, 60)
-    ).to.be.revertedWith(ERROR_MSG[0]);
-    console.log(ERROR_MSG[0]);
+    ).to.be.revertedWith("You already have a will contract");
   });
 });
