@@ -29,6 +29,8 @@ export interface WillInterface extends utils.Interface {
     "getRoleAdmin(bytes32)": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
     "hasRole(bytes32,address)": FunctionFragment;
+    "nftsInWill(address,address,uint256)": FunctionFragment;
+    "payeesInWill(address)": FunctionFragment;
     "renounceRole(bytes32,address)": FunctionFragment;
     "replaceExecutor(address)": FunctionFragment;
     "resetWill()": FunctionFragment;
@@ -38,6 +40,7 @@ export interface WillInterface extends utils.Interface {
     "setWillNFTs(address,uint256[],address)": FunctionFragment;
     "setWillToken(address[])": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
+    "tokensInWill(address)": FunctionFragment;
     "willManuscript()": FunctionFragment;
     "willNFTs(address,uint256)": FunctionFragment;
     "willStatus()": FunctionFragment;
@@ -78,6 +81,14 @@ export interface WillInterface extends utils.Interface {
     values: [BytesLike, string]
   ): string;
   encodeFunctionData(
+    functionFragment: "nftsInWill",
+    values: [string, string, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "payeesInWill",
+    values: [string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceRole",
     values: [BytesLike, string]
   ): string;
@@ -106,6 +117,10 @@ export interface WillInterface extends utils.Interface {
   encodeFunctionData(
     functionFragment: "supportsInterface",
     values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "tokensInWill",
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "willManuscript",
@@ -154,6 +169,11 @@ export interface WillInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "hasRole", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "nftsInWill", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "payeesInWill",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "renounceRole",
     data: BytesLike
@@ -179,6 +199,10 @@ export interface WillInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "tokensInWill",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "willManuscript",
     data: BytesLike
   ): Result;
@@ -193,9 +217,9 @@ export interface WillInterface extends utils.Interface {
   events: {
     "ApprovedPayees(address[])": EventFragment;
     "ChangedExecutor(address,address)": EventFragment;
-    "ERC20TokensSupplied(address)": EventFragment;
+    "ERC20TokensSupplied(address[])": EventFragment;
     "NFTWithdrawn(address,address,uint256)": EventFragment;
-    "NFTsApproved(address,uint256[])": EventFragment;
+    "NFTsApproved(address,uint256[],address)": EventFragment;
     "PayeeChecked(address)": EventFragment;
     "RoleAdminChanged(bytes32,bytes32,bytes32)": EventFragment;
     "RoleGranted(bytes32,address,address)": EventFragment;
@@ -235,8 +259,8 @@ export type ChangedExecutorEvent = TypedEvent<
 export type ChangedExecutorEventFilter = TypedEventFilter<ChangedExecutorEvent>;
 
 export type ERC20TokensSuppliedEvent = TypedEvent<
-  [string],
-  { tokenAddress: string }
+  [string[]],
+  { tokenAddress: string[] }
 >;
 
 export type ERC20TokensSuppliedEventFilter =
@@ -250,8 +274,8 @@ export type NFTWithdrawnEvent = TypedEvent<
 export type NFTWithdrawnEventFilter = TypedEventFilter<NFTWithdrawnEvent>;
 
 export type NFTsApprovedEvent = TypedEvent<
-  [string, BigNumber[]],
-  { nftContract: string; tokenId: BigNumber[] }
+  [string, BigNumber[], string],
+  { nftContract: string; tokenId: BigNumber[]; payeeAssigned: string }
 >;
 
 export type NFTsApprovedEventFilter = TypedEventFilter<NFTsApprovedEvent>;
@@ -375,6 +399,15 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[boolean]>;
 
+    nftsInWill(
+      arg0: string,
+      arg1: string,
+      arg2: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
+
+    payeesInWill(arg0: string, overrides?: CallOverrides): Promise<[boolean]>;
+
     renounceRole(
       role: BytesLike,
       account: string,
@@ -421,6 +454,8 @@ export interface Will extends BaseContract {
       interfaceId: BytesLike,
       overrides?: CallOverrides
     ): Promise<[boolean]>;
+
+    tokensInWill(arg0: string, overrides?: CallOverrides): Promise<[boolean]>;
 
     willManuscript(
       overrides?: CallOverrides
@@ -494,6 +529,15 @@ export interface Will extends BaseContract {
     overrides?: CallOverrides
   ): Promise<boolean>;
 
+  nftsInWill(
+    arg0: string,
+    arg1: string,
+    arg2: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  payeesInWill(arg0: string, overrides?: CallOverrides): Promise<boolean>;
+
   renounceRole(
     role: BytesLike,
     account: string,
@@ -540,6 +584,8 @@ export interface Will extends BaseContract {
     interfaceId: BytesLike,
     overrides?: CallOverrides
   ): Promise<boolean>;
+
+  tokensInWill(arg0: string, overrides?: CallOverrides): Promise<boolean>;
 
   willManuscript(
     overrides?: CallOverrides
@@ -614,6 +660,15 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<boolean>;
 
+    nftsInWill(
+      arg0: string,
+      arg1: string,
+      arg2: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    payeesInWill(arg0: string, overrides?: CallOverrides): Promise<boolean>;
+
     renounceRole(
       role: BytesLike,
       account: string,
@@ -653,6 +708,8 @@ export interface Will extends BaseContract {
       interfaceId: BytesLike,
       overrides?: CallOverrides
     ): Promise<boolean>;
+
+    tokensInWill(arg0: string, overrides?: CallOverrides): Promise<boolean>;
 
     willManuscript(
       overrides?: CallOverrides
@@ -711,7 +768,7 @@ export interface Will extends BaseContract {
       newExecutor?: null
     ): ChangedExecutorEventFilter;
 
-    "ERC20TokensSupplied(address)"(
+    "ERC20TokensSupplied(address[])"(
       tokenAddress?: null
     ): ERC20TokensSuppliedEventFilter;
     ERC20TokensSupplied(tokenAddress?: null): ERC20TokensSuppliedEventFilter;
@@ -723,11 +780,16 @@ export interface Will extends BaseContract {
     ): NFTWithdrawnEventFilter;
     NFTWithdrawn(nft?: null, caller?: null, id?: null): NFTWithdrawnEventFilter;
 
-    "NFTsApproved(address,uint256[])"(
+    "NFTsApproved(address,uint256[],address)"(
       nftContract?: null,
-      tokenId?: null
+      tokenId?: null,
+      payeeAssigned?: null
     ): NFTsApprovedEventFilter;
-    NFTsApproved(nftContract?: null, tokenId?: null): NFTsApprovedEventFilter;
+    NFTsApproved(
+      nftContract?: null,
+      tokenId?: null,
+      payeeAssigned?: null
+    ): NFTsApprovedEventFilter;
 
     "PayeeChecked(address)"(payee?: null): PayeeCheckedEventFilter;
     PayeeChecked(payee?: null): PayeeCheckedEventFilter;
@@ -842,6 +904,15 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
+    nftsInWill(
+      arg0: string,
+      arg1: string,
+      arg2: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    payeesInWill(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
+
     renounceRole(
       role: BytesLike,
       account: string,
@@ -888,6 +959,8 @@ export interface Will extends BaseContract {
       interfaceId: BytesLike,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
+
+    tokensInWill(arg0: string, overrides?: CallOverrides): Promise<BigNumber>;
 
     willManuscript(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -944,6 +1017,18 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    nftsInWill(
+      arg0: string,
+      arg1: string,
+      arg2: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    payeesInWill(
+      arg0: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
     renounceRole(
       role: BytesLike,
       account: string,
@@ -988,6 +1073,11 @@ export interface Will extends BaseContract {
 
     supportsInterface(
       interfaceId: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    tokensInWill(
+      arg0: string,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
