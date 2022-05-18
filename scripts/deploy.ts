@@ -14,8 +14,8 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const WillFactory = await ethers.getContractFactory("Greeter");
-  const willFactory = await WillFactory.deploy("Hello, Hardhat!");
+  const WillFactory = await ethers.getContractFactory("WillFactory");
+  const willFactory = await WillFactory.deploy();
 
   await willFactory.deployed();
 
