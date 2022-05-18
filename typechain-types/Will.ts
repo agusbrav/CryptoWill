@@ -18,20 +18,6 @@ import {
 } from "ethers";
 import { OnEvent, TypedEvent, TypedEventFilter, TypedListener } from "./common";
 
-export declare namespace Will {
-  export type WillTokenStruct = {
-    token: string;
-    correspondingTokens: BigNumberish;
-    tokenBalance: BigNumberish;
-  };
-
-  export type WillTokenStructOutput = [string, BigNumber, BigNumber] & {
-    token: string;
-    correspondingTokens: BigNumber;
-    tokenBalance: BigNumber;
-  };
-}
-
 export interface WillInterface extends utils.Interface {
   contractName: "Will";
   functions: {
@@ -207,7 +193,7 @@ export interface WillInterface extends utils.Interface {
   events: {
     "ApprovedPayees(address[])": EventFragment;
     "ChangedExecutor(address,address)": EventFragment;
-    "ERC20TokensSupplied(tuple[])": EventFragment;
+    "ERC20TokensSupplied(address)": EventFragment;
     "NFTWithdrawn(address,address,uint256)": EventFragment;
     "NFTsApproved(address,uint256[])": EventFragment;
     "PayeeChecked(address)": EventFragment;
@@ -249,8 +235,8 @@ export type ChangedExecutorEvent = TypedEvent<
 export type ChangedExecutorEventFilter = TypedEventFilter<ChangedExecutorEvent>;
 
 export type ERC20TokensSuppliedEvent = TypedEvent<
-  [Will.WillTokenStructOutput[]],
-  { tokens: Will.WillTokenStructOutput[] }
+  [string],
+  { tokenAddress: string }
 >;
 
 export type ERC20TokensSuppliedEventFilter =
@@ -710,10 +696,10 @@ export interface Will extends BaseContract {
       newExecutor?: null
     ): ChangedExecutorEventFilter;
 
-    "ERC20TokensSupplied(tuple[])"(
-      tokens?: null
+    "ERC20TokensSupplied(address)"(
+      tokenAddress?: null
     ): ERC20TokensSuppliedEventFilter;
-    ERC20TokensSupplied(tokens?: null): ERC20TokensSuppliedEventFilter;
+    ERC20TokensSupplied(tokenAddress?: null): ERC20TokensSuppliedEventFilter;
 
     "NFTWithdrawn(address,address,uint256)"(
       nft?: null,
