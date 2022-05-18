@@ -27,11 +27,11 @@ contract WillFactory {
         return willOwners[msg.sender];
     }
 
-    function checkWills(address _address) external {
+    function checkWills(address _address) external view returns (address){
         require(
             willOwners[_address] != address(0),
             "You do not have a deployed Will"
         );
-        emit WillCreated(willOwners[_address]);
+       return (willOwners[_address]);
     }
 }
