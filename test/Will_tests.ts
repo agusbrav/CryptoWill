@@ -48,7 +48,7 @@ describe("CryptoWill tests", () => {
   });
 
   describe("Function willStatus from Will contract", () => {
-    it("Calling willStatus to check WillReport event", async () => {
+    it("Calling willStatus to return status", async () => {
       currentTime = Date.now() + 1000;
       await provider.send("evm_setNextBlockTimestamp", [currentTime]);
       await contract.setWill(
@@ -57,9 +57,26 @@ describe("CryptoWill tests", () => {
           value: ethValue,
         }
       );
-      await expect(contract.willStatus())
-        .to.emit(contract, "WillReport")
-        .withArgs(owner.address, executor.address, 0, false, ethValue, 0, 0);
+      const [
+        testatorAddress,
+        executorAddress,
+        unlockTimeTemp,
+        isExecuted,
+        ethBalance,
+      ] = await contract.willStatus();
+      expect([
+        testatorAddress,
+        executorAddress,
+        unlockTimeTemp,
+        isExecuted,
+        ethBalance,
+      ]).to.be.eql([
+        owner.address,
+        executor.address,
+        ethers.BigNumber.from(0),
+        false,
+        ethers.BigNumber.from(ethValue),
+      ]);
     });
   });
 
@@ -158,7 +175,6 @@ describe("CryptoWill tests", () => {
       )) as ERC20PresetFixedSupply;
       await token1.deployed();
       await token2.deployed();
-      //console.log("Test Token deployed to address: ", Tokens[1].address);
     });
     beforeEach("Deploy new contract instance", async () => {
       [owner, executor, newExecutor, external, ...payee] =
@@ -184,7 +200,7 @@ describe("CryptoWill tests", () => {
       expect(await token1.totalSupply()).to.be.equal(balanceTT1);
       expect(await token2.totalSupply()).to.be.equal(balanceTT2);
     });
-    it.only("Owner should be able to load erc20 tokens to will", async () => {
+    it("Owner should be able to load erc20 tokens to will", async () => {
       await token1.approve(contract.address, max_supply);
       await token2.approve(contract.address, max_supply);
       expect(
@@ -194,13 +210,16 @@ describe("CryptoWill tests", () => {
       )
         .to.emit(contract, "ERC20TokensSupplied")
         .withArgs(token1.address);
-      let [token,,] = await contract.willTokens(0);
+      let [token, correspondingERC20Tokens, tokenBalance] =
+        await contract.willTokens(0);
       expect(token).to.be.equal(token1.address);
-      [token,,] = await contract.willTokens(1);
+      expect(correspondingERC20Tokens).to.be.equal("0");
+      expect(tokenBalance).to.be.equal(totalSupply);
+      [token, correspondingERC20Tokens, tokenBalance] =
+        await contract.willTokens(1);
       expect(token).to.be.equal(token2.address);
-      //console.log(await contract.willTokens(0))
-      //console.log(await contract.willTokens(1));
-      //expect (await contract.willTokens(1)).to.be.equal([token2.address, 0 , totalSupply]);
+      expect(correspondingERC20Tokens).to.be.equal("0");
+      expect(tokenBalance).to.be.equal(totalSupply);
     });
   });
 

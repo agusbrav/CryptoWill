@@ -452,8 +452,16 @@ export interface Will extends BaseContract {
     ): Promise<[string, BigNumber] & { nft: string; id: BigNumber }>;
 
     willStatus(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
+      overrides?: CallOverrides
+    ): Promise<
+      [string, string, BigNumber, boolean, BigNumber] & {
+        _testator: string;
+        _executor: string;
+        _unlockTime: BigNumber;
+        _executed: boolean;
+        _ethBalance: BigNumber;
+      }
+    >;
 
     willTokens(
       arg0: BigNumberish,
@@ -563,8 +571,16 @@ export interface Will extends BaseContract {
   ): Promise<[string, BigNumber] & { nft: string; id: BigNumber }>;
 
   willStatus(
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
+    overrides?: CallOverrides
+  ): Promise<
+    [string, string, BigNumber, boolean, BigNumber] & {
+      _testator: string;
+      _executor: string;
+      _unlockTime: BigNumber;
+      _executed: boolean;
+      _ethBalance: BigNumber;
+    }
+  >;
 
   willTokens(
     arg0: BigNumberish,
@@ -667,7 +683,17 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[string, BigNumber] & { nft: string; id: BigNumber }>;
 
-    willStatus(overrides?: CallOverrides): Promise<void>;
+    willStatus(
+      overrides?: CallOverrides
+    ): Promise<
+      [string, string, BigNumber, boolean, BigNumber] & {
+        _testator: string;
+        _executor: string;
+        _unlockTime: BigNumber;
+        _executed: boolean;
+        _ethBalance: BigNumber;
+      }
+    >;
 
     willTokens(
       arg0: BigNumberish,
@@ -898,9 +924,7 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    willStatus(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
+    willStatus(overrides?: CallOverrides): Promise<BigNumber>;
 
     willTokens(
       arg0: BigNumberish,
@@ -1002,9 +1026,7 @@ export interface Will extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    willStatus(
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
+    willStatus(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     willTokens(
       arg0: BigNumberish,
