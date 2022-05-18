@@ -2,8 +2,9 @@
 pragma solidity ^0.8.10;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 
 /**
  * @title Will Contract for Tokens and NFTs
@@ -99,7 +100,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /// Event emited after resetting the contract with resetWill and changing executor.
     event ChangedExecutor(address oldExecutor, address newExecutor);
     /// Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
-    event ERC20TokensSupplied(WillToken[] tokens);
+    event ERC20TokensSupplied(address tokenAddress);
     /// Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address payee);
     /// Event emited after approving Tokens from NFT Contract with _tokenId array.
@@ -140,18 +141,14 @@ contract Will is AccessControl, ReentrancyGuard {
      * @dev Checks the current payees, testator, executor, execution, amount and lock time
      * Should probably manage this status throug events
      */
-    function willStatus() public {
-        emit WillReport(
+    function willStatus() public view returns (address _testator, address _executor, uint256 _unlockTime, bool _executed, uint256 _ethBalance){
+        return(
             willManuscript.testator,
             willManuscript.executor,
             willManuscript.unlockTime,
             willManuscript.executed,
-            address(this).balance,
-            correspondingEth,
-            executorFee
+            address(this).balance
         );
-        emit ApprovedPayees(willManuscript.payees);
-        emit ERC20TokensSupplied(willTokens);
     }
 
     /**
@@ -199,11 +196,11 @@ contract Will is AccessControl, ReentrancyGuard {
      * You need to approve the Token allowance in order to be added to the will.
      * @param _tokenContract The ERC20 contracts you want to add to this Will
      * After calling setWillWillToken with them the approve for each token will pop.
+     * TODO: How to know if the token has already been added? maybe change array for mapping
      */
-    function setWillToken(IERC20[] memory _tokenContract)
+    function setWillToken(address[] memory _tokenContract)
         external
         payable
-        nonReentrant
         onlyRole(OWNER)
         activeWill
     {
@@ -225,7 +222,7 @@ contract Will is AccessControl, ReentrancyGuard {
                         tempWillToken.balanceOf(willManuscript.testator)
                     )
                 );
-                emit ERC20TokensSupplied(willTokens);
+                emit ERC20TokensSupplied(_tokenContract[i]);
             }
         }
     }
@@ -332,7 +329,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * Each payee will need to call this function in order to claim its ETH, Tokens and NFTs.
      * When the last payee executes this function the contract will destroy itself
      * and transfer the remaining ETH (The executor fee) to the executor.
-     * TODO: Before transfering Tokens (ERC721) check ownership, if the owner isnt the testator slice from array.
+     * TODO: If a token gets added twice it will revert.
      */
     function withdrawShares() external onlyRole(PAYEE) {
         require(willManuscript.executed, "Will has not been executed yet");
