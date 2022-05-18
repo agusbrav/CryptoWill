@@ -41,11 +41,21 @@ contract Will is AccessControl, ReentrancyGuard {
     bytes32 private constant PAYEE = keccak256("PAYEE");
     bytes32 private constant OWNER = keccak256("OWNER");
 
-    /// @dev
+    /// @dev Used to assert that all payees have withdrawn its allocations
     uint8 private totalPayees;
+
+    /// @dev Mapping used to verify non payee address is added twice
+    mapping(address => bool) public payeesInWill;
+
+    /// @dev Mapping used to verify non erc20 token is added twice
+    mapping(address => bool) public tokensInWill;
+
+    /// @dev Mapping used to verify non erc721 gets assign to same payee
+    mapping(address => mapping (address => uint256)) public nftsInWill;
 
     /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)
     mapping(address => WillNFT[]) public willNFTs;
+
     address[] public checkedPayees;
 
     uint256 public executorFee;
