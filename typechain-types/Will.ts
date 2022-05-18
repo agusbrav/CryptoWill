@@ -203,8 +203,8 @@ export interface WillInterface extends utils.Interface {
     "SharesWithdrawn(uint256,address)": EventFragment;
     "TokenWithdrawn(address,address,uint256)": EventFragment;
     "WillExecuted(bool,uint256,address,uint256,uint256,uint256)": EventFragment;
-    "WillReport(address,address,uint256,bool,uint256,uint256,uint256)": EventFragment;
     "WillReseted()": EventFragment;
+    "WillSetted(address[])": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "ApprovedPayees"): EventFragment;
@@ -219,8 +219,8 @@ export interface WillInterface extends utils.Interface {
   getEvent(nameOrSignatureOrTopic: "SharesWithdrawn"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "TokenWithdrawn"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "WillExecuted"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "WillReport"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "WillReseted"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "WillSetted"): EventFragment;
 }
 
 export type ApprovedPayeesEvent = TypedEvent<[string[]], { payees: string[] }>;
@@ -310,24 +310,13 @@ export type WillExecutedEvent = TypedEvent<
 
 export type WillExecutedEventFilter = TypedEventFilter<WillExecutedEvent>;
 
-export type WillReportEvent = TypedEvent<
-  [string, string, BigNumber, boolean, BigNumber, BigNumber, BigNumber],
-  {
-    owner: string;
-    executor: string;
-    unlockTime: BigNumber;
-    withdrawAvailable: boolean;
-    totalBalance: BigNumber;
-    correspondingEth: BigNumber;
-    executorFee: BigNumber;
-  }
->;
-
-export type WillReportEventFilter = TypedEventFilter<WillReportEvent>;
-
 export type WillResetedEvent = TypedEvent<[], {}>;
 
 export type WillResetedEventFilter = TypedEventFilter<WillResetedEvent>;
+
+export type WillSettedEvent = TypedEvent<[string[]], { payees: string[] }>;
+
+export type WillSettedEventFilter = TypedEventFilter<WillSettedEvent>;
 
 export interface Will extends BaseContract {
   contractName: "Will";
@@ -813,27 +802,11 @@ export interface Will extends BaseContract {
       numberOfPayees?: null
     ): WillExecutedEventFilter;
 
-    "WillReport(address,address,uint256,bool,uint256,uint256,uint256)"(
-      owner?: null,
-      executor?: null,
-      unlockTime?: null,
-      withdrawAvailable?: null,
-      totalBalance?: null,
-      correspondingEth?: null,
-      executorFee?: null
-    ): WillReportEventFilter;
-    WillReport(
-      owner?: null,
-      executor?: null,
-      unlockTime?: null,
-      withdrawAvailable?: null,
-      totalBalance?: null,
-      correspondingEth?: null,
-      executorFee?: null
-    ): WillReportEventFilter;
-
     "WillReseted()"(): WillResetedEventFilter;
     WillReseted(): WillResetedEventFilter;
+
+    "WillSetted(address[])"(payees?: null): WillSettedEventFilter;
+    WillSetted(payees?: null): WillSettedEventFilter;
   };
 
   estimateGas: {

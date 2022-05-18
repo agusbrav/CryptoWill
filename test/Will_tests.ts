@@ -106,7 +106,7 @@ describe("CryptoWill tests", () => {
         ])
       ).to.be.revertedWith("Minumun balance must be 0.2 ETH");
     });
-    it("Should emit willReport with 0 allocations and 0 lawyer fee till execution", async () => {
+    it.only("Should emit willReport with 0 allocations and 0 lawyer fee till execution", async () => {
       ///Set the actual time to next block timestamp to get the expiracy date
       currentTime = Date.now() + 1000;
       await provider.send("evm_setNextBlockTimestamp", [currentTime]);
@@ -118,8 +118,8 @@ describe("CryptoWill tests", () => {
           }
         )
       )
-        .to.emit(contract, "WillReport")
-        .withArgs(owner.address, executor.address, 0, false, ethValue, 0, 0);
+        .to.emit(contract, "WillSetted")
+        .withArgs([payee[1].address, payee[2].address, payee[3].address]);
     });
     it("Shouldnt be able to setWill With an address thats not the owner", async () => {
       ///Test the onlyRole modifier with an external address

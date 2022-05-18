@@ -55,17 +55,11 @@ contract Will is AccessControl, ReentrancyGuard {
     Manuscript public willManuscript;
 
     /**
-     * @notice WillReport event trigers all info from the manuscript
+     * @notice WillSetted event trigers all info from the manuscript
      * Can be called with WillStatus function or its called automatically after setting up the will
      */
-    event WillReport(
-        address owner,
-        address executor,
-        uint256 unlockTime,
-        bool withdrawAvailable,
-        uint256 totalBalance,
-        uint256 correspondingEth,
-        uint256 executorFee
+    event WillSetted(
+        address payable[] payees
     );
 
     /**
@@ -155,6 +149,8 @@ contract Will is AccessControl, ReentrancyGuard {
      * @dev The setWill function works as a configuration for the will members and assets
      * This function can only be called from the OWNER
      * You need to provide the contract at least 0.2 ETH in order to be able to set Payees
+     * TODO: Add a payee mapping to check if it was already loaded
+     * TODO: Create new event after loadingpayees
      */
     function setWill(address payable[] memory _payeesAdd)
         external
@@ -184,7 +180,7 @@ contract Will is AccessControl, ReentrancyGuard {
             grantRole(PAYEE, _payeesAdd[i]);
             willManuscript.payees.push(_payeesAdd[i]);
         }
-        willStatus();
+        emit WillSetted(_payeesAdd);
     }
 
     /**
