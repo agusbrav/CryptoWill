@@ -46,8 +46,7 @@ describe("Will Factory Tests", function () {
       from: contract.address,
       nonce: 1,
     });
-    expect(await contract.checkWills(owner.address))
-      .to.be.equal(willAddress);
+    expect(await contract.checkWills(owner.address)).to.be.equal(willAddress);
   });
   it("Should revert if you already have a will contract created", async function () {
     await expect(
