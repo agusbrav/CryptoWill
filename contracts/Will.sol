@@ -256,6 +256,9 @@ contract Will is AccessControl, ReentrancyGuard {
                     )
                 );
             }
+            else {
+                revert TokenNotApproved();
+            }
         emit ERC20TokensSupplied(_tokenContract);
         }
     }
