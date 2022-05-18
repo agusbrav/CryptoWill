@@ -187,8 +187,21 @@ contract Will is AccessControl, ReentrancyGuard {
                 _payeesAdd[i] != willManuscript.executor,
                 "The executor cant be a payee"
             );
-            grantRole(PAYEE, _payeesAdd[i]);
+            require(
+                !payeesInWill[_payeesAdd[i]],
+                string(
+                        abi.encodePacked(
+                            "This payee ",
+                            Strings.toHexString(
+                                uint160(_payeesAdd[i])),
+                                20
+                            ),
+                            " is already in will"
+                        )
+            )
+            payeesInWill[_payeesAdd[i]]= true;
             willManuscript.payees.push(_payeesAdd[i]);
+            grantRole(PAYEE, _payeesAdd[i]);
         }
         emit WillSetted(_payeesAdd);
     }
