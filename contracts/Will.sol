@@ -108,8 +108,9 @@ contract Will is AccessControl, ReentrancyGuard {
     /// Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address payee);
     /// Event emited after approving Tokens from NFT Contract with _tokenId array.
-    event NFTsApproved(IERC721 nftContract, uint256[] tokenId);
+    event NFTsApproved(IERC721 nftContract, uint256[] tokenId, address payeeAssigned);
 
+    error TokenNotApproved("You must approve the token");
     /**
      * @dev The constructor sets up the roles and roles admin
      * This garantees that the main roles are set up in the creation of the smart contract
@@ -215,7 +216,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * You need to approve the Token allowance in order to be added to the will.
      * @param _tokenContract The ERC20 contracts you want to add to this Will
      * After calling setWillWillToken with them the approve for each token will pop.
-     * TODO: How to know if the token has already been added? maybe change array for mapping
+     * TODO: Add revert if the caller does not approve the contracts
      */
     function setWillToken(address[] memory _tokenContract)
         external
@@ -267,7 +268,7 @@ contract Will is AccessControl, ReentrancyGuard {
      * @param _payee The address of the payee that would be assigned these NFTs.
      */
     function setWillNFTs(
-        IERC721 _nftContract,
+        address _nftContract,
         uint256[] memory _tokenId,
         address _payee
     ) external onlyRole(OWNER) activeWill {
@@ -275,12 +276,29 @@ contract Will is AccessControl, ReentrancyGuard {
         address payee = _payee;
         uint256 _length = _tokenId.length;
         for (uint256 i = 0; i < _length; i++) {
+            require(
+                !nftsInWill[_nftContract[payee[_tokenId[i]]]],
+                string(
+                        abi.encodePacked(
+                            "This erc721 contract: ",
+                            Strings.toHexString(
+                                uint160(_nftContract)),
+                                20
+                            ),
+                            " id:",
+                           _tokenId[i],
+                            " is already assigned"
+                        )
+            )
             IERC721 nftContract = IERC721(_nftContract);
-            nftContract.approve(address(this), _tokenId[i]);
+            nftsInWill[_nftContract[payee[_tokenId[i]]]] = true;
             if (nftContract.getApproved(_tokenId[i]) == address(this)) {
                 willNFTs[payee].push(WillNFT(nftContract, _tokenId[i]));
-                emit NFTsApproved(nftContract, _tokenId);
             }
+            else {
+                revert TokenNotApproved();
+            }
+            emit NFTsApproved(nftContract, _tokenId, payee);
         }
     }
 
@@ -316,6 +334,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /**
      * @dev Updates the dividends of the payees for each token in the contract once executed
      * The Allocations are based in the current balance of the testator.
+     * TODO: Verify allowance to assert its not changed
      */
     function updateTokensAllocations() private {
         uint256 tokenBalanace;
