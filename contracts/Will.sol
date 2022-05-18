@@ -104,7 +104,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /// Event emited after resetting the contract with resetWill and changing executor.
     event ChangedExecutor(address oldExecutor, address newExecutor);
     /// Event emited from willStatus and setWillTokens for each ERC20 token in the will smart contract.
-    event ERC20TokensSupplied(address tokenAddress);
+    event ERC20TokensSupplied(address[] tokenAddress);
     /// Event emited after the payee withdraw its shares. When this event its emited this address will no longer be a payee.
     event PayeeChecked(address payee);
     /// Event emited after approving Tokens from NFT Contract with _tokenId array.
@@ -228,12 +228,25 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _length = _tokenContract.length;
         for (uint256 i = 0; i < _length; i++) {
             tempWillToken = IERC20(_tokenContract[i]);
+            require(
+                !tokensInWill[_tokenContract[i]],
+                string(
+                        abi.encodePacked(
+                            "This token ",
+                            Strings.toHexString(
+                                uint160(_tokenContract[i])),
+                                20
+                            ),
+                            " is already in will"
+                        )
+            )
             if (
                 tempWillToken.allowance(
                     willManuscript.testator,
                     address(this)
                 ) == 2 ^ (256 - 1)
             ) {
+                tokensInWill[_tokenContract[i]] = true;
                 willTokens.push(
                     WillToken(
                         tempWillToken,
@@ -241,8 +254,8 @@ contract Will is AccessControl, ReentrancyGuard {
                         tempWillToken.balanceOf(willManuscript.testator)
                     )
                 );
-                emit ERC20TokensSupplied(_tokenContract[i]);
             }
+        emit ERC20TokensSupplied(_tokenContract);
         }
     }
 
