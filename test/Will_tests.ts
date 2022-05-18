@@ -11,10 +11,8 @@ describe("CryptoWill tests", () => {
   let newExecutor: SignerWithAddress;
   let external: SignerWithAddress;
   let payee: SignerWithAddress[];
-  let token1: ERC20PresetFixedSupply,
-    token2: ERC20PresetFixedSupply,
-    token3: ERC20PresetFixedSupply;
-  let NFT1: ERC721;
+  let token1: ERC20PresetFixedSupply, token2: ERC20PresetFixedSupply;
+  let NFT1: ERC721, NFT2: ERC721, NFT3: ERC721;
   const max_supply = 2 ^ (256 - 1);
   const totalSupply = (10 ** 9).toString();
   const provider = ethers.provider;
@@ -107,9 +105,6 @@ describe("CryptoWill tests", () => {
       ).to.be.revertedWith("Minumun balance must be 0.2 ETH");
     });
     it("Should emit WillSetted with payees added by setWill function", async () => {
-      ///Set the actual time to next block timestamp to get the expiracy date
-      currentTime = Date.now() + 1000;
-      await provider.send("evm_setNextBlockTimestamp", [currentTime]);
       await expect(
         contract.setWill(
           [payee[1].address, payee[2].address, payee[3].address],
@@ -130,26 +125,22 @@ describe("CryptoWill tests", () => {
         `AccessControl: account ${addrExt} is missing role ${ownerRole}`
       );
     });
-    it("Shouldnt be able to load more than 50 payees", async () => {
+    it("Shouldnt be able to load a payee twice", async () => {
       ///Add 50 payees to the will.
-      let _ethValue = ethMin;
-      for (let i = 0; i < 10; i++) {
-        await contract.setWill(
-          [
-            payee[1].address,
-            payee[2].address,
-            payee[3].address,
-            payee[4].address,
-            payee[5].address,
-          ],
-          { value: _ethValue }
-        );
-        _ethValue = ethers.BigNumber.from(0);
-      }
-      ///Try to add one more payee with limit
-      await expect(
-        contract.setWill([payee[1].address, payee[2].address, payee[3].address])
-      ).to.be.revertedWith("Max payees are 50");
+      await contract.setWill(
+        [
+          payee[1].address,
+          payee[2].address,
+          payee[3].address,
+          payee[4].address,
+          payee[5].address,
+        ],
+        { value: ethValue }
+      );
+      ///Try to add a duplicated payee
+      await expect(contract.setWill([payee[1].address])).to.be.revertedWith(
+        `This payee ${payee[1].address.toLowerCase()} is already in will`
+      );
     });
   });
 
@@ -209,17 +200,28 @@ describe("CryptoWill tests", () => {
           .setWillToken([token1.address, token2.address])
       )
         .to.emit(contract, "ERC20TokensSupplied")
-        .withArgs(token1.address);
+        .withArgs([token1.address, token2.address]);
       let [token, correspondingERC20Tokens, tokenBalance] =
         await contract.willTokens(0);
-      expect(token).to.be.equal(token1.address);
-      expect(correspondingERC20Tokens).to.be.equal("0");
-      expect(tokenBalance).to.be.equal(totalSupply);
-      [token, correspondingERC20Tokens, tokenBalance] =
-        await contract.willTokens(1);
-      expect(token).to.be.equal(token2.address);
-      expect(correspondingERC20Tokens).to.be.equal("0");
-      expect(tokenBalance).to.be.equal(totalSupply);
+      expect([token, correspondingERC20Tokens, tokenBalance]).to.be.eql([
+        token1.address,
+        ethers.BigNumber.from(0),
+        ethers.BigNumber.from(totalSupply),
+      ]);
+    });
+    it("Shouldnt be able to load twice the same token", async () => {
+      await token1.approve(contract.address, max_supply);
+      await expect(
+        contract.connect(owner).setWillToken([token1.address, token1.address])
+      ).to.be.revertedWith(
+        `This token ${token1.address.toLowerCase()} is already in will`
+      );
+    });
+    it("Revert if owner doesnt approve the token to load in the will", async () => {
+      await token1.approve(contract.address, max_supply);
+      await expect(
+        contract.connect(owner).setWillToken([token1.address, token2.address])
+      ).to.be.revertedWith("TokenNotApproved");
     });
   });
 
