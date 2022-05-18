@@ -106,7 +106,7 @@ describe("CryptoWill tests", () => {
         ])
       ).to.be.revertedWith("Minumun balance must be 0.2 ETH");
     });
-    it.only("Should emit willReport with 0 allocations and 0 lawyer fee till execution", async () => {
+    it("Should emit WillSetted with payees added by setWill function", async () => {
       ///Set the actual time to next block timestamp to get the expiracy date
       currentTime = Date.now() + 1000;
       await provider.send("evm_setNextBlockTimestamp", [currentTime]);
