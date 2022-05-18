@@ -51,7 +51,7 @@ contract Will is AccessControl, ReentrancyGuard {
     mapping(address => bool) public tokensInWill;
 
     /// @dev Mapping used to verify non erc721 gets assign to same payee
-    mapping(address => mapping (address => uint256)) public nftsInWill;
+    mapping(address => mapping (address => mapping (uint256 => bool))) public nftsInWill;
 
     /// @dev Mapping of Payees => Each NFT assigned (Nft contract and Id)
     mapping(address => WillNFT[]) public willNFTs;
@@ -110,7 +110,7 @@ contract Will is AccessControl, ReentrancyGuard {
     /// Event emited after approving Tokens from NFT Contract with _tokenId array.
     event NFTsApproved(IERC721 nftContract, uint256[] tokenId, address payeeAssigned);
 
-    error TokenNotApproved("You must approve the token");
+    error TokenNotApproved();
     /**
      * @dev The constructor sets up the roles and roles admin
      * This garantees that the main roles are set up in the creation of the smart contract
@@ -194,12 +194,14 @@ contract Will is AccessControl, ReentrancyGuard {
                         abi.encodePacked(
                             "This payee ",
                             Strings.toHexString(
-                                uint160(_payeesAdd[i])),
+                                uint160(address(_payeesAdd[i])),
                                 20
                             ),
-                            " is already in will"
+                        
+                        " is already in will"
                         )
-            )
+                    )
+                );
             payeesInWill[_payeesAdd[i]]= true;
             willManuscript.payees.push(_payeesAdd[i]);
             grantRole(PAYEE, _payeesAdd[i]);
@@ -235,12 +237,13 @@ contract Will is AccessControl, ReentrancyGuard {
                         abi.encodePacked(
                             "This token ",
                             Strings.toHexString(
-                                uint160(_tokenContract[i])),
+                                uint160(address(_tokenContract[i])),
                                 20
                             ),
                             " is already in will"
                         )
-            )
+                )
+            );
             if (
                 tempWillToken.allowance(
                     willManuscript.testator,
@@ -280,21 +283,22 @@ contract Will is AccessControl, ReentrancyGuard {
         uint256 _length = _tokenId.length;
         for (uint256 i = 0; i < _length; i++) {
             require(
-                !nftsInWill[_nftContract[payee[_tokenId[i]]]],
+                !nftsInWill[_nftContract][payee][_tokenId[i]],
                 string(
                         abi.encodePacked(
                             "This erc721 contract: ",
                             Strings.toHexString(
-                                uint160(_nftContract)),
+                                uint160(_nftContract),
                                 20
                             ),
                             " id:",
                            _tokenId[i],
                             " is already assigned"
                         )
-            )
+                )
+            );
             IERC721 nftContract = IERC721(_nftContract);
-            nftsInWill[_nftContract[payee[_tokenId[i]]]] = true;
+            nftsInWill[_nftContract][payee][_tokenId[i]] = true;
             if (nftContract.getApproved(_tokenId[i]) == address(this)) {
                 willNFTs[payee].push(WillNFT(nftContract, _tokenId[i]));
             }
