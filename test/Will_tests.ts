@@ -1,18 +1,22 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
+import { ERC20PresetFixedSupply, ERC721, Will } from "../typechain-types/";
 
 describe("CryptoWill tests", () => {
-  let contract: any;
+  let contract: Will;
   let Will;
   let owner: SignerWithAddress;
   let executor: SignerWithAddress;
   let newExecutor: SignerWithAddress;
   let external: SignerWithAddress;
   let payee: SignerWithAddress[];
-  let Tokens: string[];
-  let balanceOwner;
+  let token1: ERC20PresetFixedSupply,
+    token2: ERC20PresetFixedSupply,
+    token3: ERC20PresetFixedSupply;
+  let NFT1: ERC721;
+  const max_supply = 2 ^ (256 - 1);
+  const totalSupply = (10 ** 9).toString();
   const provider = ethers.provider;
   const ethValue = ethers.utils.parseEther("10.0");
   const correspondingTokens = ethers.utils.parseEther("3.0");
@@ -35,7 +39,11 @@ describe("CryptoWill tests", () => {
     [owner, executor, newExecutor, external, ...payee] =
       await ethers.getSigners();
     Will = await ethers.getContractFactory("Will");
-    contract = await Will.deploy(owner.address, executor.address, waitDays);
+    contract = (await Will.deploy(
+      owner.address,
+      executor.address,
+      waitDays
+    )) as Will;
     await contract.deployed();
   });
 
@@ -129,28 +137,73 @@ describe("CryptoWill tests", () => {
   });
 
   describe("Function setWillToken", () => {
-    it("Should revert when calling from other than owner", async () => {
-      await expect(contract.connect(external).revokeWill()).to.be.revertedWith(
-        `AccessControl: account ${addrExt} is missing role ${ownerRole}`
+    before("Deploying ERC20 tokens", async () => {
+      const testTokenFactory = await ethers.getContractFactory(
+        "ERC20PresetFixedSupply"
       );
+
+      let owner: SignerWithAddress;
+      [owner] = await ethers.getSigners();
+      token1 = (await testTokenFactory.deploy(
+        "TestToken1",
+        "TT1",
+        totalSupply,
+        owner.address
+      )) as ERC20PresetFixedSupply;
+      token2 = (await testTokenFactory.deploy(
+        "TestToken2",
+        "TT2",
+        totalSupply,
+        owner.address
+      )) as ERC20PresetFixedSupply;
+      await token1.deployed();
+      await token2.deployed();
+      //console.log("Test Token deployed to address: ", Tokens[1].address);
     });
-    it("Should destroy contract when calling from owner", async () => {
-      balanceOwner = await owner.getBalance();
-      let tx1 = await contract
-        .connect(owner)
-        .setWill([payee[1].address, payee[2].address, payee[3].address], {
-          value: ethValue,
-        });
-      const receipt1 = await tx1.wait();
-      const tx2 = await contract.connect(owner).revokeWill();
-      const receipt2 = await tx2.wait();
-      const balanceAfterGas = balanceOwner.sub(
-        (receipt1.gasUsed.add(receipt2.gasUsed))
-      );
-      expect(await owner.getBalance()).to.be.equal(balanceAfterGas);
+    beforeEach("Deploy new contract instance", async () => {
+      [owner, executor, newExecutor, external, ...payee] =
+        await ethers.getSigners();
+      Will = await ethers.getContractFactory("Will");
+      contract = (await Will.deploy(
+        owner.address,
+        executor.address,
+        waitDays
+      )) as Will;
+      await contract.deployed();
+      await contract.setWill([payee[1].address, payee[2].address], {
+        value: ethValue,
+      });
+    });
+    it("Token1 and Token2 balance of owner should be 1000000000", async () => {
+      const balanceTT1 = await token1
+        .connect(owner.address)
+        .balanceOf(owner.address);
+      const balanceTT2 = await token1
+        .connect(owner.address)
+        .balanceOf(owner.address);
+      expect(await token1.totalSupply()).to.be.equal(balanceTT1);
+      expect(await token2.totalSupply()).to.be.equal(balanceTT2);
+    });
+    it.only("Owner should be able to load erc20 tokens to will", async () => {
+      await token1.approve(contract.address, max_supply);
+      await token2.approve(contract.address, max_supply);
+      expect(
+        await contract
+          .connect(owner)
+          .setWillToken([token1.address, token2.address])
+      )
+        .to.emit(contract, "ERC20TokensSupplied")
+        .withArgs(token1.address);
+      let [token,,] = await contract.willTokens(0);
+      expect(token).to.be.equal(token1.address);
+      [token,,] = await contract.willTokens(1);
+      expect(token).to.be.equal(token2.address);
+      //console.log(await contract.willTokens(0))
+      //console.log(await contract.willTokens(1));
+      //expect (await contract.willTokens(1)).to.be.equal([token2.address, 0 , totalSupply]);
     });
   });
-  
+
   describe("Function executeWill from Will Contract", () => {
     it("Only the executor account should call this function", async () => {
       await expect(contract.connect(external).executeWill()).to.be.revertedWith(
@@ -197,8 +250,10 @@ describe("CryptoWill tests", () => {
     it("Calling resetWill and changing executor", async () => {
       currentTime = Date.now() + 3600 * 24 * 2;
       await provider.send("evm_setNextBlockTimestamp", [currentTime]);
-      await expect(contract.connect(owner).resetWill())
-        .to.emit(contract, "WillReseted");
+      await expect(contract.connect(owner).resetWill()).to.emit(
+        contract,
+        "WillReseted"
+      );
     });
   });
 
@@ -275,19 +330,18 @@ describe("CryptoWill tests", () => {
       );
     });
     it("Should destroy contract when calling from owner", async () => {
-      balanceOwner = await owner.getBalance();
-      let tx1 = await contract
+      await contract
         .connect(owner)
         .setWill([payee[1].address, payee[2].address, payee[3].address], {
           value: ethValue,
         });
-      const receipt1 = await tx1.wait();
-      const tx2 = await contract.connect(owner).revokeWill();
-      const receipt2 = await tx2.wait();
-      const balanceAfterGas = balanceOwner.sub(
-        (receipt1.gasUsed.add(receipt2.gasUsed))
+      const balanceOwner = await owner.getBalance();
+      const tx1 = await contract.connect(owner).revokeWill();
+      const receiptTx1 = await tx1.wait();
+      const gas = receiptTx1.gasUsed.mul(receiptTx1.effectiveGasPrice);
+      expect(await owner.getBalance()).to.be.equal(
+        balanceOwner.sub(gas).add(ethValue)
       );
-      expect(await owner.getBalance()).to.be.equal(balanceAfterGas);
     });
   });
 });
