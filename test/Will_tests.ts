@@ -1,7 +1,14 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { ERC20PresetFixedSupply, ERC721, Will } from "../typechain-types/";
+import { randomSigners } from "../tasks/accounts";
+import { erc20MintToAddress } from "../tasks/erc20test_deploy";
+import { nftMintToAddress } from "../tasks/erc721test_deploy";
+import {
+  ERC20PresetFixedSupply,
+  ERC721PresetMinterPauserAutoId,
+  Will,
+} from "../typechain-types/";
 
 describe("CryptoWill tests", () => {
   let contract: Will;
@@ -12,7 +19,9 @@ describe("CryptoWill tests", () => {
   let external: SignerWithAddress;
   let payee: SignerWithAddress[];
   let token1: ERC20PresetFixedSupply, token2: ERC20PresetFixedSupply;
-  let NFT1: ERC721, NFT2: ERC721, NFT3: ERC721;
+  let NFT1: ERC721PresetMinterPauserAutoId,
+    NFT2: ERC721PresetMinterPauserAutoId,
+    NFT3: ERC721PresetMinterPauserAutoId;
   const max_supply = 2 ^ (256 - 1);
   const totalSupply = (10 ** 9).toString();
   const provider = ethers.provider;
@@ -125,8 +134,19 @@ describe("CryptoWill tests", () => {
         `AccessControl: account ${addrExt} is missing role ${ownerRole}`
       );
     });
-    it("Shouldnt be able to load a payee twice", async () => {
+    it("Trying to add more than 50 payees reverts", async () => {
       ///Add 50 payees to the will.
+      let randomAccounts = randomSigners(50);
+      let randomAddress: string;
+      for (let i = 0; i < 50; ++i) {
+        randomAddress = await randomAccounts[i].getAddress();
+        await contract.setWill([randomAddress], { value: ethMin });
+      }
+      await expect(contract.setWill([payee[1].address])).to.be.revertedWith(
+        "Max payees are 50"
+      );
+    });
+    it("Shouldnt be able to load a payee twice", async () => {
       await contract.setWill(
         [
           payee[1].address,
@@ -145,41 +165,11 @@ describe("CryptoWill tests", () => {
   });
 
   describe("Function setWillToken", () => {
-    before("Deploying ERC20 tokens", async () => {
-      const testTokenFactory = await ethers.getContractFactory(
-        "ERC20PresetFixedSupply"
-      );
-
-      let owner: SignerWithAddress;
-      [owner] = await ethers.getSigners();
-      token1 = (await testTokenFactory.deploy(
-        "TestToken1",
-        "TT1",
-        totalSupply,
-        owner.address
-      )) as ERC20PresetFixedSupply;
-      token2 = (await testTokenFactory.deploy(
-        "TestToken2",
-        "TT2",
-        totalSupply,
-        owner.address
-      )) as ERC20PresetFixedSupply;
-      await token1.deployed();
-      await token2.deployed();
-    });
     beforeEach("Deploy new contract instance", async () => {
-      [owner, executor, newExecutor, external, ...payee] =
-        await ethers.getSigners();
-      Will = await ethers.getContractFactory("Will");
-      contract = (await Will.deploy(
-        owner.address,
-        executor.address,
-        waitDays
-      )) as Will;
-      await contract.deployed();
       await contract.setWill([payee[1].address, payee[2].address], {
         value: ethValue,
       });
+      [token1, token2] = await erc20MintToAddress(owner);
     });
     it("Token1 and Token2 balance of owner should be 1000000000", async () => {
       const balanceTT1 = await token1
@@ -225,6 +215,66 @@ describe("CryptoWill tests", () => {
     });
   });
 
+  describe("Function setWillNFTs", () => {
+    beforeEach(
+      "Deploy new contract instance and er721-erc20 tokens",
+      async () => {
+        await contract.setWill([payee[1].address, payee[2].address], {
+          value: ethValue,
+        });
+        [NFT1, NFT2] = await nftMintToAddress(owner);
+      }
+    );
+    it("Nfts should be owned by owner", async () => {
+      expect(await NFT1.balanceOf(owner.address)).to.be.equal(5);
+      expect(await NFT2.balanceOf(owner.address)).to.be.equal(5);
+      expect(await NFT1.ownerOf(0)).to.be.equal(owner.address);
+      expect(await NFT1.ownerOf(4)).to.be.equal(owner.address);
+      expect(await NFT2.ownerOf(0)).to.be.equal(owner.address);
+      expect(await NFT2.ownerOf(4)).to.be.equal(owner.address);
+    });
+    it("Owner should be able to load erc20 tokens to will and assign them to payees", async () => {
+      await NFT1.approve(contract.address, 0);
+      await NFT1.approve(contract.address, 1);
+      await NFT2.approve(contract.address, 3);
+      await NFT2.approve(contract.address, 4);
+      expect(
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [0, 1], payee[1].address)
+      )
+        .to.emit(contract, "NFTsApproved")
+        .withArgs(NFT1.address, [0, 1], payee[1].address);
+      expect(
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT2.address, [3, 4], payee[2].address)
+      )
+        .to.emit(contract, "NFTsApproved")
+        .withArgs(NFT2.address, [3, 4], payee[2].address);
+      const willNfts1 = await contract.willNFTs(payee[1].address, 0);
+      const willNfts2 = await contract.willNFTs(payee[2].address, 1);
+      expect(willNfts1).to.be.eql([NFT1.address, ethers.BigNumber.from(0)]);
+      expect(willNfts2).to.be.eql([NFT2.address, ethers.BigNumber.from(4)]);
+    });
+    it("If owner does not approve the nft id the function should revert", async () => {
+      await NFT1.approve(contract.address, 0);
+      await expect(
+        contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [0, 1], payee[1].address)
+      ).to.be.revertedWith("TokenNotApproved");
+    });
+    it("Trying to assign a nft to a non payee adress reverts", async () => {
+      await NFT1.approve(contract.address, 0);
+      await expect(
+        contract.connect(owner).setWillNFTs(NFT1.address, [0], external.address)
+      ).to.be.revertedWith(
+        `AccessControl: account ${external.address.toLowerCase()} is missing role ${payeeRole}`
+      );
+    });
+  });
+
   describe("Function executeWill from Will Contract", () => {
     it("Only the executor account should call this function", async () => {
       await expect(contract.connect(external).executeWill()).to.be.revertedWith(
@@ -257,9 +307,12 @@ describe("CryptoWill tests", () => {
         );
     });
     it("Shouldnt be able to executeWill if it was already executed", async () => {
-      contract.setWill([payee[1].address, payee[2].address, payee[3].address], {
-        value: ethValue,
-      });
+      await contract.setWill(
+        [payee[1].address, payee[2].address, payee[3].address],
+        {
+          value: ethValue,
+        }
+      );
       await contract.connect(executor).executeWill();
       await expect(contract.connect(executor).executeWill()).to.be.revertedWith(
         "Will has already been executed"
@@ -268,42 +321,13 @@ describe("CryptoWill tests", () => {
   });
 
   describe("Function resetWill should emit WillReseted", () => {
-    it("Calling resetWill and changing executor", async () => {
-      currentTime = Date.now() + 3600 * 24 * 2;
-      await provider.send("evm_setNextBlockTimestamp", [currentTime]);
+    it("Calling resetWill should emit WillReseted event", async () => {
       await expect(contract.connect(owner).resetWill()).to.emit(
         contract,
         "WillReseted"
       );
     });
-  });
-
-  describe("Function withdrawShares from Will Contract", () => {
-    it("Only the payees account should call this function", async () => {
-      await contract.setWill(
-        [payee[1].address, payee[2].address, payee[3].address],
-        {
-          value: ethValue,
-        }
-      );
-      await expect(
-        contract.connect(external).withdrawShares()
-      ).to.be.revertedWith(
-        `AccessControl: account ${addrExt} is missing role ${payeeRole}`
-      );
-    });
-    it("Shouldnt be able to withdrawShares if it hasnt been executed", async () => {
-      await contract.setWill(
-        [payee[1].address, payee[2].address, payee[3].address],
-        {
-          value: ethValue,
-        }
-      );
-      await expect(
-        contract.connect(payee[1]).withdrawShares()
-      ).to.be.revertedWith("Will has not been executed yet");
-    });
-    it("Shouldnt be able to withdrawShares if the unlock time hasnt reached", async () => {
+    it("Calling resetWill after withdrawShares should revert", async () => {
       await contract.setWill(
         [payee[1].address, payee[2].address, payee[3].address],
         {
@@ -311,16 +335,47 @@ describe("CryptoWill tests", () => {
         }
       );
       await contract.connect(executor).executeWill();
-      await expect(
-        contract.connect(payee[1]).withdrawShares()
-      ).to.be.revertedWith("Will hasnt been unlocked yet");
+      currentTime = Date.now() + 1000;
+      unlockTime = currentTime + waitTime + waitTime;
+      await provider.send("evm_setNextBlockTimestamp", [unlockTime]);
+      await expect(contract.connect(payee[1]).withdrawShares())
+        .to.emit(contract, "PayeeChecked")
+        .withArgs(payee[1].address);
+      await expect(contract.connect(owner).resetWill()).to.be.revertedWith(
+        "At least one payee has withdrawn"
+      );
     });
-    it("Executing withdraShares after unlockTime and executeWill", async () => {
+  });
+
+  describe("Function withdrawShares from Will Contract", () => {
+    beforeEach("Deploying ERC721 tokens", async () => {
+      [NFT1, NFT2] = await nftMintToAddress(owner);
+      [token1, token2] = await erc20MintToAddress(owner);
       await contract
         .connect(owner)
         .setWill([payee[1].address, payee[2].address, payee[3].address], {
           value: ethValue,
         });
+    });
+    it("Only the payees account should call this function", async () => {
+      await expect(
+        contract.connect(external).withdrawShares()
+      ).to.be.revertedWith(
+        `AccessControl: account ${addrExt} is missing role ${payeeRole}`
+      );
+    });
+    it("Shouldnt be able to withdrawShares if it hasnt been executed", async () => {
+      await expect(
+        contract.connect(payee[1]).withdrawShares()
+      ).to.be.revertedWith("Will has not been executed yet");
+    });
+    it("Shouldnt be able to withdrawShares if the unlock time hasnt reached", async () => {
+      await contract.connect(executor).executeWill();
+      await expect(
+        contract.connect(payee[1]).withdrawShares()
+      ).to.be.revertedWith("Will hasnt been unlocked yet");
+    });
+    it("Executing withdraShares after unlockTime and executeWill", async () => {
       await contract.connect(executor).executeWill();
       currentTime = Date.now() + 1000;
       unlockTime = currentTime + waitTime + waitTime;
