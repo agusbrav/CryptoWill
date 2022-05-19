@@ -29,8 +29,8 @@ describe("CryptoWill tests", () => {
   const correspondingTokens = ethers.utils.parseEther("3.0");
   const executorFee = ethers.utils.parseEther("1.0");
   const ethMin = ethers.utils.parseEther("0.2");
-  const waitDays = 864000;
-  const waitTime = 74649600000;
+  const waitDays = 20;
+  const waitTime = 20000000;
   const addrExt = "0x90f79bf6eb2c4f870365e785982e1f101e93b906";
   const ownerRole =
     "0x6270edb7c868f86fda4adedba75108201087268ea345934db8bad688e1feb91b";
@@ -39,7 +39,6 @@ describe("CryptoWill tests", () => {
   const payeeRole =
     "0xdd3cf490277a2ed9b8e9d23db09c21bd229077712bc2c8266158d0d92288625a";
   let currentTime;
-  let unlockTime;
 
   ///Create new smart contract instance before each test method
   beforeEach("Deploy new contract instance", async () => {
@@ -56,8 +55,6 @@ describe("CryptoWill tests", () => {
 
   describe("Function willStatus from Will contract", () => {
     it("Calling willStatus to return status", async () => {
-      currentTime = Date.now() + 1000;
-      await provider.send("evm_setNextBlockTimestamp", [currentTime]);
       await contract.setWill(
         [payee[1].address, payee[2].address, payee[3].address],
         {
@@ -126,8 +123,6 @@ describe("CryptoWill tests", () => {
         .withArgs([payee[1].address, payee[2].address, payee[3].address]);
     });
     it("Shouldnt be able to setWill With an address thats not the owner", async () => {
-      ///Test the onlyRole modifier with an external address
-      ///Should only work with the owner address
       await expect(
         contract.connect(external).setWill([payee[1].address, payee[2].address])
       ).to.be.revertedWith(
@@ -293,15 +288,14 @@ describe("CryptoWill tests", () => {
           value: ethValue,
         }
       );
-      currentTime = Date.now() + 1000;
-      await provider.send("evm_setNextBlockTimestamp", [currentTime]);
+      currentTime = Math.round(new Date().getTime() / 1000);
+      await provider.send("evm_mine", [currentTime + 100000]);
       await expect(contract.connect(executor).executeWill())
         .to.emit(contract, "WillExecuted")
         .withArgs(
           true,
-          waitTime,
           executor.address,
-          waitTime + currentTime,
+          waitDays * 86400 + currentTime + 100001,
           ethValue,
           3
         );
@@ -335,9 +329,9 @@ describe("CryptoWill tests", () => {
         }
       );
       await contract.connect(executor).executeWill();
-      currentTime = Date.now() + 1000;
-      unlockTime = currentTime + waitTime + waitTime;
-      await provider.send("evm_setNextBlockTimestamp", [unlockTime]);
+      currentTime = Math.round(new Date().getTime() / 1000);
+      const unlockTime = currentTime + waitTime * 2;
+      await provider.send("evm_mine", [unlockTime]);
       await expect(contract.connect(payee[1]).withdrawShares())
         .to.emit(contract, "PayeeChecked")
         .withArgs(payee[1].address);
@@ -377,9 +371,9 @@ describe("CryptoWill tests", () => {
     });
     it("Executing withdraShares after unlockTime and executeWill", async () => {
       await contract.connect(executor).executeWill();
-      currentTime = Date.now() + 1000;
-      unlockTime = currentTime + waitTime + waitTime;
-      await provider.send("evm_setNextBlockTimestamp", [unlockTime]);
+      currentTime = Math.round(new Date().getTime() / 1000);
+      const unlockTime = currentTime + waitTime * 3;
+      await provider.send("evm_mine", [unlockTime]);
       await expect(contract.connect(payee[1]).withdrawShares())
         .to.emit(contract, "SharesWithdrawn")
         .withArgs(correspondingTokens, payee[1].address);
