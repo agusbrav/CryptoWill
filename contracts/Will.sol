@@ -175,8 +175,6 @@ contract Will is AccessControl, ReentrancyGuard {
      * @dev The setWill function works as a configuration for the will members and assets
      * This function can only be called from the OWNER
      * You need to provide the contract at least 0.2 ETH in order to be able to set Payees
-     * TODO: Add a payee mapping to check if it was already loaded
-     * TODO: Create new event after loadingpayees
      */
     function setWill(address payable[] memory _payeesAdd)
         external
@@ -232,7 +230,6 @@ contract Will is AccessControl, ReentrancyGuard {
      * You need to approve the Token allowance in order to be added to the will.
      * @param _tokenContract The ERC20 contracts you want to add to this Will
      * After calling setWillWillToken with them the approve for each token will pop.
-     * TODO: Add revert if the caller does not approve the contracts
      */
     function setWillToken(address[] memory _tokenContract)
         external
@@ -395,7 +392,6 @@ contract Will is AccessControl, ReentrancyGuard {
      * Each payee will need to call this function in order to claim its ETH, Tokens and NFTs.
      * When the last payee executes this function the contract will destroy itself
      * and transfer the remaining ETH (The executor fee) to the executor.
-     * TODO: If a token gets added twice it will revert.
      */
     function withdrawShares() external onlyRole(PAYEE) {
         require(willManuscript.executed, "Will has not been executed yet");
@@ -462,11 +458,14 @@ contract Will is AccessControl, ReentrancyGuard {
     /// @dev Deletes payee from array in willManuscript and revoke its PAYEE role.
     function payeeChecked() private {
         uint256 _length = willManuscript.payees.length;
-        for (uint8 i = 0; i < _length; ++i)
-            if (willManuscript.payees[i] == msg.sender) {
-                emit PayeeChecked(willManuscript.payees[i]);
-                renounceRole(PAYEE, msg.sender);
-                delete willManuscript.payees[i];
+        address _payee = msg.sender;
+        for (uint256 i = 0; i < _length - 1; ++i)
+            if (willManuscript.payees[i] == _payee) {
+                willManuscript.payees[i] = willManuscript.payees[_length - 1];
+                willManuscript.payees[_length - 1] = _payee;
+                willManuscript.payees.pop();
+                emit PayeeChecked(_payee);
+                renounceRole(PAYEE, _payee);
             }
     }
 
