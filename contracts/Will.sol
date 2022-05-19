@@ -78,7 +78,6 @@ contract Will is AccessControl, ReentrancyGuard {
      */
     event WillExecuted(
         bool exec,
-        uint256 time,
         address executor,
         uint256 unlockTime,
         uint256 totalBalance,
@@ -328,7 +327,6 @@ contract Will is AccessControl, ReentrancyGuard {
         updateAllocations();
         emit WillExecuted(
             willManuscript.executed,
-            willManuscript.waitTime,
             willManuscript.executor,
             willManuscript.unlockTime,
             address(this).balance,
