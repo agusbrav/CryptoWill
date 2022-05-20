@@ -26,6 +26,7 @@ describe("CryptoWill tests", () => {
   const provider = ethers.provider;
   const ethValue = ethers.utils.parseEther("10.0");
   const ethMin = ethers.utils.parseEther("0.2");
+  const executorFee = ethers.utils.parseEther("1");
   const waitDays = 20;
   const waitTime = 20000000;
   const addrExt = "0x90f79bf6eb2c4f870365e785982e1f101e93b906";
@@ -35,7 +36,6 @@ describe("CryptoWill tests", () => {
     "0x9cf85f95575c3af1e116e3d37fd41e7f36a8a373623f51ffaaa87fdd032fa767";
   const payeeRole =
     "0xdd3cf490277a2ed9b8e9d23db09c21bd229077712bc2c8266158d0d92288625a";
-  let currentTime;
 
   ///Create new smart contract instance before each test method
   beforeEach("Deploy new contract instance", async () => {
@@ -285,14 +285,14 @@ describe("CryptoWill tests", () => {
           value: ethValue,
         }
       );
-      currentTime = Math.round(new Date().getTime() / 1000);
-      await provider.send("evm_mine", [currentTime + 100000]);
+      const latestBlock = (await ethers.provider.getBlock("latest")).timestamp;
+      await provider.send("evm_mine", [latestBlock + 100000]);
       await expect(contract.connect(executor).executeWill())
         .to.emit(contract, "WillExecuted")
         .withArgs(
           true,
           executor.address,
-          waitDays * 86400 + currentTime + 100001,
+          waitDays * 86400 + latestBlock + 100001,
           ethValue,
           3
         );
@@ -326,8 +326,8 @@ describe("CryptoWill tests", () => {
         }
       );
       await contract.connect(executor).executeWill();
-      currentTime = Math.round(new Date().getTime() / 1000);
-      const unlockTime = currentTime + waitTime * 2;
+      const latestBlock = (await ethers.provider.getBlock("latest")).timestamp;
+      const unlockTime = latestBlock + waitTime;
       await provider.send("evm_mine", [unlockTime]);
       await expect(contract.connect(payee[1]).withdrawShares())
         .to.emit(contract, "PayeeChecked")
@@ -339,9 +339,15 @@ describe("CryptoWill tests", () => {
   });
 
   describe("Function withdrawShares from Will Contract", () => {
-    beforeEach("Deploying ERC721 tokens", async () => {
+    beforeEach("Deploy ERC721 and ERC20 tokens to owner", async () => {
       [NFT1, NFT2] = await nftMintToAddress(owner);
       [token1, token2] = await erc20MintToAddress(owner);
+      await token1.connect(owner).approve(contract.address, MAX_INT);
+      await token2.connect(owner).approve(contract.address, MAX_INT);
+      for (let i = 0; i < 5; ++i) {
+        await NFT1.connect(owner).approve(contract.address, i);
+        await NFT2.connect(owner).approve(contract.address, i);
+      }
       await contract
         .connect(owner)
         .setWill([payee[1].address, payee[2].address], {
@@ -366,43 +372,203 @@ describe("CryptoWill tests", () => {
         contract.connect(payee[1]).withdrawShares()
       ).to.be.revertedWith("Will hasnt been unlocked yet");
     });
-    it("Executing withdraShares after unlockTime and executeWill", async () => {
-      await token1.connect(owner).approve(contract.address, MAX_INT);
-      await token2.connect(owner).approve(contract.address, MAX_INT);
-      await contract
-        .connect(owner)
-        .setWillToken([token1.address, token2.address]);
+    it("Trying to withdraw two times as same payee reverts", async () => {
       await contract.connect(executor).executeWill();
-      currentTime = Math.round(new Date().getTime() / 1000);
-      const unlockTime = currentTime + waitTime * 3;
+      const latestBlock = (await ethers.provider.getBlock("latest")).timestamp;
+      const unlockTime = latestBlock + waitTime;
       await provider.send("evm_mine", [unlockTime]);
-      const tx1 = await contract.connect(payee[1]).withdrawShares();
-      await expect(tx1)
-        .to.emit(contract, "TokenWithdrawn")
-        .withArgs(
-          token1.address,
-          payee[1].address,
+      contract.connect(payee[1]).withdrawShares();
+      await expect(
+        contract.connect(payee[1]).withdrawShares()
+      ).to.be.revertedWith(
+        `AccessControl: account ${payee[1].address.toLowerCase()} is missing role ${payeeRole}`
+      );
+    });
+
+    describe("Testing withdrawShares with ERC20 Tokens", () => {
+      beforeEach("setting erc20 tokens in will and executing it", async () => {
+        await contract
+          .connect(owner)
+          .setWillToken([token1.address, token2.address]);
+        await contract.connect(executor).executeWill();
+      });
+      it("Executing withdraShares after unlockTime and executeWill in a will with ERC20 tokens", async () => {
+        const latestBlock = (await ethers.provider.getBlock("latest"))
+          .timestamp;
+        const unlockTime = latestBlock + waitTime;
+        await provider.send("evm_mine", [unlockTime]);
+        const tx1 = await contract.connect(payee[1]).withdrawShares();
+        expect(tx1)
+          .to.emit(contract, "TokenWithdrawn")
+          .withArgs(
+            token1.address,
+            payee[1].address,
+            ethers.BigNumber.from(500000000)
+          );
+        expect(tx1)
+          .to.emit(contract, "TokenWithdrawn")
+          .withArgs(
+            token2.address,
+            payee[1].address,
+            ethers.BigNumber.from(500000000)
+          );
+        expect(await token1.balanceOf(payee[1].address)).to.be.equal(
           ethers.BigNumber.from(500000000)
         );
-      await expect(tx1)
-        .to.emit(contract, "TokenWithdrawn")
-        .withArgs(
-          token2.address,
-          payee[1].address,
+        expect(await token1.balanceOf(owner.address)).to.be.equal(
           ethers.BigNumber.from(500000000)
         );
-      expect(await token1.balanceOf(payee[1].address)).to.be.equal(
-        ethers.BigNumber.from(500000000)
-      );
-      expect(await token1.balanceOf(owner.address)).to.be.equal(
-        ethers.BigNumber.from(500000000)
-      );
-      expect(await token2.balanceOf(payee[1].address)).to.be.equal(
-        ethers.BigNumber.from(500000000)
-      );
-      expect(await token2.balanceOf(owner.address)).to.be.equal(
-        ethers.BigNumber.from(500000000)
-      );
+        expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+          ethers.BigNumber.from(500000000)
+        );
+        expect(await token2.balanceOf(owner.address)).to.be.equal(
+          ethers.BigNumber.from(500000000)
+        );
+      });
+      it("Executing withdraShares from all payees expecting to selfdustruct to executor address", async () => {
+        const latestBlock = (await ethers.provider.getBlock("latest"))
+          .timestamp;
+        const unlockTime = latestBlock + waitTime;
+        await provider.send("evm_mine", [unlockTime]);
+        const tx1 = await contract.connect(payee[1]).withdrawShares();
+        expect(tx1)
+          .to.emit(contract, "TokenWithdrawn")
+          .withArgs(
+            token1.address,
+            payee[1].address,
+            ethers.BigNumber.from(500000000)
+          );
+        expect(tx1)
+          .to.emit(contract, "TokenWithdrawn")
+          .withArgs(
+            token2.address,
+            payee[1].address,
+            ethers.BigNumber.from(500000000)
+          );
+        expect(tx1)
+          .to.emit(contract, "PayeeChecked")
+          .withArgs(payee[1].address);
+        const executorBalance = await executor.getBalance();
+        const tx2 = await contract.connect(payee[2]).withdrawShares();
+        expect(tx2)
+          .to.emit(contract, "TokenWithdrawn")
+          .withArgs(
+            token1.address,
+            payee[2].address,
+            ethers.BigNumber.from(500000000)
+          );
+        expect(tx2)
+          .to.emit(contract, "TokenWithdrawn")
+          .withArgs(
+            token2.address,
+            payee[2].address,
+            ethers.BigNumber.from(500000000)
+          );
+        expect(tx2)
+          .to.emit(contract, "PayeeChecked")
+          .withArgs(payee[2].address);
+        expect(await executor.getBalance()).to.be.equal(
+          executorBalance.add(executorFee)
+        );
+      });
+      it("Trying to withdraw tokens that the testator no longer owns should only delete tokens from will", async () => {
+        const latestBlock = (await ethers.provider.getBlock("latest"))
+          .timestamp;
+        const unlockTime = latestBlock + waitTime;
+        await provider.send("evm_mine", [unlockTime]);
+        token1
+          .connect(owner)
+          .transfer(external.address, await token1.balanceOf(owner.address));
+        token2
+          .connect(owner)
+          .transfer(external.address, await token2.balanceOf(owner.address));
+        contract.connect(payee[1]).withdrawShares();
+        expect(await token1.balanceOf(payee[1].address)).to.be.equal(
+          ethers.BigNumber.from(0)
+        );
+        expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+          ethers.BigNumber.from(0)
+        );
+        expect(await token2.balanceOf(external.address)).to.be.equal(
+          ethers.BigNumber.from(1000000000)
+        );
+        expect(await token2.balanceOf(external.address)).to.be.equal(
+          ethers.BigNumber.from(1000000000)
+        );
+      });
+
+      describe("Testing withdrawShares with ERC721 Tokens", () => {
+        beforeEach("Setting ERC721 tokens to Will", async () => {
+          await contract
+            .connect(owner)
+            .setWillNFTs(NFT1.address, [0, 1, 2, 3, 4], payee[1].address);
+          await contract.connect(executor).executeWill();
+        });
+        it("Trying to withdraw an NFT that the testator transfered after adding it to will should fail", async () => {
+          await NFT1.connect(owner).transferFrom(
+            owner.address,
+            external.address,
+            4
+          );
+          const latestBlock = (await ethers.provider.getBlock("latest"))
+            .timestamp;
+          const unlockTime = latestBlock + waitTime;
+          await provider.send("evm_mine", [unlockTime]);
+          const tx1 = await contract.connect(payee[1]).withdrawShares();
+          expect(tx1)
+            .to.emit(contract, "NFTWithdrawn")
+            .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(0));
+          expect(tx1)
+            .to.emit(contract, "NFTWithdrawn")
+            .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(3));
+          expect(await NFT1.ownerOf(0)).to.be.equal(payee[1].address);
+          expect(await NFT1.ownerOf(3)).to.be.equal(payee[1].address);
+          expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+        });
+        it("Withdrawing with NFTs that dont belong to owner should delete them all and continue", async () => {
+          await NFT1.connect(owner).transferFrom(
+            owner.address,
+            external.address,
+            0
+          );
+          await NFT1.connect(owner).transferFrom(
+            owner.address,
+            external.address,
+            3
+          );
+          await NFT1.connect(owner).transferFrom(
+            owner.address,
+            external.address,
+            4
+          );
+          const latestBlock = (await ethers.provider.getBlock("latest"))
+            .timestamp;
+          const unlockTime = latestBlock + waitTime;
+          await provider.send("evm_mine", [unlockTime]);
+          await contract.connect(payee[1]).withdrawShares();
+          expect(await NFT1.ownerOf(0)).to.be.equal(external.address);
+          expect(await NFT1.ownerOf(1)).to.be.equal(payee[1].address);
+          expect(await NFT1.ownerOf(2)).to.be.equal(payee[1].address);
+          expect(await NFT1.ownerOf(3)).to.be.equal(external.address);
+          expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+        });
+      });
+
+      describe("Testing withdrawShares with ERC20 and ERC721 Tokens", () => {
+        beforeEach("", async () => {
+          await contract
+            .connect(owner)
+            .setWillNFTs(NFT1.address, [0, 1, 2, 3, 4], payee[1].address);
+          await contract
+            .connect(owner)
+            .setWillNFTs(NFT2.address, [0, 1, 2, 3, 4], payee[2].address);
+          await contract
+            .connect(owner)
+            .setWillToken([token1.address, token2.address]);
+          await contract.connect(executor).executeWill();
+        });
+        it("", async () => {});
+      });
     });
   });
 
