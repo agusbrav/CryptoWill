@@ -345,7 +345,7 @@ contract Will is AccessControl, ReentrancyGuard {
     function updateTokensAllocations() private {
         uint256 tokenBalanace;
         uint256 _length = willTokens.length;
-        for (uint256 i = 0; i < _length; ++i) {
+        for (uint256 i = 0; i <= _length - 1; ) {
             if (
                 willTokens[i].tokenBalance !=
                 IERC20(willTokens[i].token).balanceOf(
@@ -360,25 +360,43 @@ contract Will is AccessControl, ReentrancyGuard {
                     willManuscript.payees.length;
                 willTokens[i].tokenBalance = tokenBalanace;
             }
+            if (willTokens[i].tokenBalance == 0) {
+                WillToken memory tempToken = willTokens[i];
+                willTokens[i] = willTokens[_length - 1];
+                willTokens[_length - 1] = tempToken;
+                willTokens.pop();
+                _length = willTokens.length;
+                i = 0;
+            } else i++;
+            if (_length == 0) break;
         }
     }
 
     /**
      * @dev Check the ownership of ER721 tokens declared in the will if they are no longer
      * from the testator deletes them from the array of its corresponding payee.
-     * In the case every NFT in the array its deleted the loop breaks for the payee.
+     * In case all NFTs in the array gets deleted the loop breaks for the payee.
      */
-    function updateNFTAllocations(address _payeeChecking) private {
-        uint256 _k = willNFTs[_payeeChecking].length - 1;
-        for (uint256 k = _k; k >= 0; k--) {
+    function updateNFTAllocations() private {
+        address _payeeChecking = msg.sender;
+        uint256 _length = willNFTs[_payeeChecking].length;
+        for (uint256 k = 0; k <= _length - 1; ) {
             if (
-                willNFTs[_payeeChecking][k].nft.ownerOf(
+                (willNFTs[_payeeChecking][k].nft.ownerOf(
                     willNFTs[_payeeChecking][k].id
-                ) != willManuscript.testator
+                ) != willManuscript.testator) &&
+                willNFTs[_payeeChecking].length != 0
             ) {
-                delete willNFTs[_payeeChecking][k];
-            }
-            if (willNFTs[_payeeChecking].length == 0) break;
+                WillNFT memory tempNFT = willNFTs[_payeeChecking][k];
+                willNFTs[_payeeChecking][k] = willNFTs[_payeeChecking][
+                    _length - 1
+                ];
+                willNFTs[_payeeChecking][_length - 1] = tempNFT;
+                willNFTs[_payeeChecking].pop();
+                _length = willNFTs[_payeeChecking].length;
+                k = 0;
+            } else k++;
+            if (_length == 0) break;
         }
     }
 
@@ -396,8 +414,8 @@ contract Will is AccessControl, ReentrancyGuard {
         );
         bool sent;
         if (willTokens.length > 0) {
-            uint256 _lengthj = willTokens.length;
             updateTokensAllocations();
+            uint256 _lengthj = willTokens.length;
             for (uint256 j = 0; j < _lengthj; ++j) {
                 sent = willTokens[j].token.transferFrom(
                     address(willManuscript.testator),
@@ -426,7 +444,7 @@ contract Will is AccessControl, ReentrancyGuard {
             }
         }
         if (willNFTs[msg.sender].length > 0) {
-            updateNFTAllocations(msg.sender);
+            updateNFTAllocations();
             uint256 _lengthk = willNFTs[msg.sender].length;
             for (uint256 k = 0; k < _lengthk; k++) {
                 willNFTs[msg.sender][k].nft.safeTransferFrom(
@@ -454,14 +472,17 @@ contract Will is AccessControl, ReentrancyGuard {
     function payeeChecked() private {
         uint256 _length = willManuscript.payees.length;
         address _payee = msg.sender;
-        for (uint256 i = 0; i < _length - 1; ++i)
+        for (uint256 i = 0; i <= _length - 1; ++i) {
             if (willManuscript.payees[i] == _payee) {
                 willManuscript.payees[i] = willManuscript.payees[_length - 1];
                 willManuscript.payees[_length - 1] = _payee;
                 willManuscript.payees.pop();
+                _length = willManuscript.payees.length;
                 emit PayeeChecked(_payee);
                 renounceRole(PAYEE, _payee);
             }
+            if (_length == 0) break;
+        }
     }
 
     /**
