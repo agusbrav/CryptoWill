@@ -20,14 +20,11 @@ describe("CryptoWill tests", () => {
   let payee: SignerWithAddress[];
   let token1: ERC20PresetFixedSupply, token2: ERC20PresetFixedSupply;
   let NFT1: ERC721PresetMinterPauserAutoId,
-    NFT2: ERC721PresetMinterPauserAutoId,
-    NFT3: ERC721PresetMinterPauserAutoId;
-  const max_supply = 2 ^ (256 - 1);
-  const totalSupply = (10 ** 9).toString();
+    NFT2: ERC721PresetMinterPauserAutoId;
+  const MAX_INT =
+    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
   const provider = ethers.provider;
   const ethValue = ethers.utils.parseEther("10.0");
-  const correspondingTokens = ethers.utils.parseEther("3.0");
-  const executorFee = ethers.utils.parseEther("1.0");
   const ethMin = ethers.utils.parseEther("0.2");
   const waitDays = 20;
   const waitTime = 20000000;
@@ -177,8 +174,8 @@ describe("CryptoWill tests", () => {
       expect(await token2.totalSupply()).to.be.equal(balanceTT2);
     });
     it("Owner should be able to load erc20 tokens to will", async () => {
-      await token1.approve(contract.address, max_supply);
-      await token2.approve(contract.address, max_supply);
+      await token1.approve(contract.address, MAX_INT);
+      await token2.approve(contract.address, MAX_INT);
       expect(
         await contract
           .connect(owner)
@@ -191,11 +188,11 @@ describe("CryptoWill tests", () => {
       expect([token, correspondingERC20Tokens, tokenBalance]).to.be.eql([
         token1.address,
         ethers.BigNumber.from(0),
-        ethers.BigNumber.from(totalSupply),
+        ethers.BigNumber.from(0),
       ]);
     });
     it("Shouldnt be able to load twice the same token", async () => {
-      await token1.approve(contract.address, max_supply);
+      await token1.approve(contract.address, MAX_INT);
       await expect(
         contract.connect(owner).setWillToken([token1.address, token1.address])
       ).to.be.revertedWith(
@@ -203,7 +200,7 @@ describe("CryptoWill tests", () => {
       );
     });
     it("Revert if owner doesnt approve the token to load in the will", async () => {
-      await token1.approve(contract.address, max_supply);
+      await token1.approve(contract.address, MAX_INT);
       await expect(
         contract.connect(owner).setWillToken([token1.address, token2.address])
       ).to.be.revertedWith("TokenNotApproved");
@@ -347,7 +344,7 @@ describe("CryptoWill tests", () => {
       [token1, token2] = await erc20MintToAddress(owner);
       await contract
         .connect(owner)
-        .setWill([payee[1].address, payee[2].address, payee[3].address], {
+        .setWill([payee[1].address, payee[2].address], {
           value: ethValue,
         });
     });
@@ -370,13 +367,42 @@ describe("CryptoWill tests", () => {
       ).to.be.revertedWith("Will hasnt been unlocked yet");
     });
     it("Executing withdraShares after unlockTime and executeWill", async () => {
+      await token1.connect(owner).approve(contract.address, MAX_INT);
+      await token2.connect(owner).approve(contract.address, MAX_INT);
+      await contract
+        .connect(owner)
+        .setWillToken([token1.address, token2.address]);
       await contract.connect(executor).executeWill();
       currentTime = Math.round(new Date().getTime() / 1000);
       const unlockTime = currentTime + waitTime * 3;
       await provider.send("evm_mine", [unlockTime]);
-      await expect(contract.connect(payee[1]).withdrawShares())
-        .to.emit(contract, "SharesWithdrawn")
-        .withArgs(correspondingTokens, payee[1].address);
+      const tx1 = await contract.connect(payee[1]).withdrawShares();
+      await expect(tx1)
+        .to.emit(contract, "TokenWithdrawn")
+        .withArgs(
+          token1.address,
+          payee[1].address,
+          ethers.BigNumber.from(500000000)
+        );
+      await expect(tx1)
+        .to.emit(contract, "TokenWithdrawn")
+        .withArgs(
+          token2.address,
+          payee[1].address,
+          ethers.BigNumber.from(500000000)
+        );
+      expect(await token1.balanceOf(payee[1].address)).to.be.equal(
+        ethers.BigNumber.from(500000000)
+      );
+      expect(await token1.balanceOf(owner.address)).to.be.equal(
+        ethers.BigNumber.from(500000000)
+      );
+      expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+        ethers.BigNumber.from(500000000)
+      );
+      expect(await token2.balanceOf(owner.address)).to.be.equal(
+        ethers.BigNumber.from(500000000)
+      );
     });
   });
 
