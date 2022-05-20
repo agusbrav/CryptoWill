@@ -42,6 +42,8 @@ contract Will is AccessControl, ReentrancyGuard {
     bytes32 private constant PAYEE = keccak256("PAYEE");
     bytes32 private constant OWNER = keccak256("OWNER");
 
+    uint256 public constant MAX_SUPPLY = 2**256 - 1;
+
     /// @dev Used to assert that all payees have withdrawn its allocations
     uint8 private totalPayees;
 
@@ -258,16 +260,10 @@ contract Will is AccessControl, ReentrancyGuard {
                 tempWillToken.allowance(
                     willManuscript.testator,
                     address(this)
-                ) == 2 ^ (256 - 1)
+                ) == MAX_SUPPLY
             ) {
                 tokensInWill[_tokenContract[i]] = true;
-                willTokens.push(
-                    WillToken(
-                        tempWillToken,
-                        0,
-                        tempWillToken.balanceOf(willManuscript.testator)
-                    )
-                );
+                willTokens.push(WillToken(tempWillToken, 0, 0));
             } else {
                 revert TokenNotApproved();
             }
@@ -362,6 +358,7 @@ contract Will is AccessControl, ReentrancyGuard {
                 willTokens[i].correspondingTokens =
                     tokenBalanace /
                     willManuscript.payees.length;
+                willTokens[i].tokenBalance = tokenBalanace;
             }
         }
     }
