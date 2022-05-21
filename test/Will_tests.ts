@@ -496,78 +496,172 @@ describe("CryptoWill tests", () => {
           ethers.BigNumber.from(1000000000)
         );
       });
-
-      describe("Testing withdrawShares with ERC721 Tokens", () => {
-        beforeEach("Setting ERC721 tokens to Will", async () => {
-          await contract
-            .connect(owner)
-            .setWillNFTs(NFT1.address, [0, 1, 2, 3, 4], payee[1].address);
-          await contract.connect(executor).executeWill();
-        });
-        it("Trying to withdraw an NFT that the testator transfered after adding it to will should fail", async () => {
-          await NFT1.connect(owner).transferFrom(
-            owner.address,
-            external.address,
-            4
-          );
-          const latestBlock = (await ethers.provider.getBlock("latest"))
-            .timestamp;
-          const unlockTime = latestBlock + waitTime;
-          await provider.send("evm_mine", [unlockTime]);
-          const tx1 = await contract.connect(payee[1]).withdrawShares();
-          expect(tx1)
-            .to.emit(contract, "NFTWithdrawn")
-            .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(0));
-          expect(tx1)
-            .to.emit(contract, "NFTWithdrawn")
-            .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(3));
-          expect(await NFT1.ownerOf(0)).to.be.equal(payee[1].address);
-          expect(await NFT1.ownerOf(3)).to.be.equal(payee[1].address);
-          expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
-        });
-        it("Withdrawing with NFTs that dont belong to owner should delete them all and continue", async () => {
-          await NFT1.connect(owner).transferFrom(
-            owner.address,
-            external.address,
-            0
-          );
-          await NFT1.connect(owner).transferFrom(
-            owner.address,
-            external.address,
-            3
-          );
-          await NFT1.connect(owner).transferFrom(
-            owner.address,
-            external.address,
-            4
-          );
-          const latestBlock = (await ethers.provider.getBlock("latest"))
-            .timestamp;
-          const unlockTime = latestBlock + waitTime;
-          await provider.send("evm_mine", [unlockTime]);
-          await contract.connect(payee[1]).withdrawShares();
-          expect(await NFT1.ownerOf(0)).to.be.equal(external.address);
-          expect(await NFT1.ownerOf(1)).to.be.equal(payee[1].address);
-          expect(await NFT1.ownerOf(2)).to.be.equal(payee[1].address);
-          expect(await NFT1.ownerOf(3)).to.be.equal(external.address);
-          expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
-        });
+    });
+    describe("Testing withdrawShares with ERC721 Tokens", () => {
+      beforeEach("Setting ERC721 tokens to Will", async () => {
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [0, 1, 2, 3, 4], payee[1].address);
+        await contract.connect(executor).executeWill();
       });
-
-      describe("Testing withdrawShares with ERC20 and ERC721 Tokens", () => {
-        beforeEach("", async () => {
-          await contract
-            .connect(owner)
-            .setWillNFTs(NFT1.address, [0, 1, 2, 3, 4], payee[1].address);
-          await contract
-            .connect(owner)
-            .setWillNFTs(NFT2.address, [0, 1, 2, 3, 4], payee[2].address);
-          await contract
-            .connect(owner)
-            .setWillToken([token1.address, token2.address]);
-          await contract.connect(executor).executeWill();
-        });
-        it("", async () => {});
+      it("Trying to withdraw an NFT that the testator transfered after adding it to will should fail", async () => {
+        await NFT1.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          4
+        );
+        const latestBlock = (await ethers.provider.getBlock("latest"))
+          .timestamp;
+        const unlockTime = latestBlock + waitTime;
+        await provider.send("evm_mine", [unlockTime]);
+        const tx1 = await contract.connect(payee[1]).withdrawShares();
+        expect(tx1)
+          .to.emit(contract, "NFTWithdrawn")
+          .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(0));
+        expect(tx1)
+          .to.emit(contract, "NFTWithdrawn")
+          .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(3));
+        expect(await NFT1.ownerOf(0)).to.be.equal(payee[1].address);
+        expect(await NFT1.ownerOf(3)).to.be.equal(payee[1].address);
+        expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+      });
+      it("Withdrawing with NFTs that dont belong to owner should delete them all and continue", async () => {
+        await NFT1.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          0
+        );
+        await NFT1.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          3
+        );
+        await NFT1.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          4
+        );
+        const latestBlock = (await ethers.provider.getBlock("latest"))
+          .timestamp;
+        const unlockTime = latestBlock + waitTime;
+        await provider.send("evm_mine", [unlockTime]);
+        await contract.connect(payee[1]).withdrawShares();
+        expect(await NFT1.ownerOf(0)).to.be.equal(external.address);
+        expect(await NFT1.ownerOf(1)).to.be.equal(payee[1].address);
+        expect(await NFT1.ownerOf(2)).to.be.equal(payee[1].address);
+        expect(await NFT1.ownerOf(3)).to.be.equal(external.address);
+        expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+      });
+    });
+    describe("Testing withdrawShares with ERC20 and ERC721 Tokens", () => {
+      beforeEach("", async () => {
+        await contract
+          .connect(owner)
+          .setWill([payee[3].address, payee[4].address]);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [0], payee[1].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [2, 3], payee[2].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [4], payee[3].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT1.address, [1], payee[4].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT2.address, [3], payee[1].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT2.address, [1], payee[2].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT2.address, [2, 4], payee[3].address);
+        await contract
+          .connect(owner)
+          .setWillNFTs(NFT2.address, [0], payee[4].address);
+        await contract
+          .connect(owner)
+          .setWillToken([token1.address, token2.address]);
+        await contract.connect(executor).executeWill();
+      });
+      it("Testing a Will withdraw function with several payees a different ERC20/ERC721. Also some of the doesnt belong to the owner at the time of withdrawal", async () => {
+        const latestBlock = (await ethers.provider.getBlock("latest"))
+          .timestamp;
+        const unlockTime = latestBlock + waitTime;
+        await provider.send("evm_mine", [unlockTime]);
+        await NFT1.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          1
+        );
+        await NFT1.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          4
+        );
+        await NFT2.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          0
+        );
+        await NFT2.connect(owner).transferFrom(
+          owner.address,
+          external.address,
+          3
+        );
+        const externalTransferToken1 = ethers.BigNumber.from(200000000);
+        await token1
+          .connect(owner)
+          .transfer(external.address, externalTransferToken1);
+        const correspondingToken1 = ethers.BigNumber.from(10 ** 9)
+          .sub(externalTransferToken1)
+          .div(4);
+        const correspondingToken2 = ethers.BigNumber.from(10 ** 9).div(4);
+        const executorBalance = await executor.getBalance();
+        await contract.connect(payee[1]).withdrawShares();
+        await contract.connect(payee[2]).withdrawShares();
+        await contract.connect(payee[3]).withdrawShares();
+        await contract.connect(payee[4]).withdrawShares();
+        expect(await NFT1.ownerOf(0)).to.be.equal(payee[1].address);
+        expect(await NFT1.ownerOf(1)).to.be.equal(external.address);
+        expect(await NFT1.ownerOf(2)).to.be.equal(payee[2].address);
+        expect(await NFT1.ownerOf(3)).to.be.equal(payee[2].address);
+        expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+        expect(await NFT2.ownerOf(0)).to.be.equal(external.address);
+        expect(await NFT2.ownerOf(1)).to.be.equal(payee[2].address);
+        expect(await NFT2.ownerOf(2)).to.be.equal(payee[3].address);
+        expect(await NFT2.ownerOf(3)).to.be.equal(external.address);
+        expect(await NFT2.ownerOf(4)).to.be.equal(payee[3].address);
+        expect(await executor.getBalance()).to.be.equal(
+          executorBalance.add(executorFee)
+        );
+        expect(await token1.balanceOf(payee[1].address)).to.be.equal(
+          correspondingToken1
+        );
+        expect(await token1.balanceOf(payee[2].address)).to.be.equal(
+          correspondingToken1
+        );
+        expect(await token1.balanceOf(payee[3].address)).to.be.equal(
+          correspondingToken1
+        );
+        expect(await token1.balanceOf(payee[4].address)).to.be.equal(
+          correspondingToken1
+        );
+        expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+          correspondingToken2
+        );
+        expect(await token2.balanceOf(payee[2].address)).to.be.equal(
+          correspondingToken2
+        );
+        expect(await token2.balanceOf(payee[3].address)).to.be.equal(
+          correspondingToken2
+        );
+        expect(await token2.balanceOf(payee[4].address)).to.be.equal(
+          correspondingToken2
+        );
       });
     });
   });
