@@ -1,5 +1,9 @@
 {
   "name": "hardhat-project",
+  "scripts": {
+    "test": "nodemon -x npx hardhat test -w contracts -w test -e js,ts,sol",
+    "coverage": "nodemon -x npx hardhat coverage -w contracts -w test -e js,ts,sol"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-etherscan": "^3.0.1",
