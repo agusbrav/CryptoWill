@@ -1,7 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { randomSigners } from "../tasks/accounts";
 import {
   ERC20PresetFixedSupply,
   ERC721PresetMinterPauserAutoId,
@@ -9,6 +8,7 @@ import {
 } from "../typechain-types/";
 import { erc20MintToAddress } from "./erc20test_deploy";
 import { nftMintToAddress } from "./erc721test_deploy";
+import { randomSigners } from "./randomSign";
 
 describe("CryptoWill tests", () => {
   let contract: Will;
