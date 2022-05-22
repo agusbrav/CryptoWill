@@ -71,7 +71,7 @@ describe("CryptoWill tests", () => {
         unlockTimeTemp,
         isExecuted,
         ethBalance,
-      ]).to.be.eql([
+      ]).to.deep.equal([
         owner.address,
         executor.address,
         ethers.BigNumber.from(0),
@@ -185,7 +185,7 @@ describe("CryptoWill tests", () => {
         .withArgs([token1.address, token2.address]);
       let [token, correspondingERC20Tokens, tokenBalance] =
         await contract.willTokens(0);
-      expect([token, correspondingERC20Tokens, tokenBalance]).to.be.eql([
+      expect([token, correspondingERC20Tokens, tokenBalance]).to.deep.equal([
         token1.address,
         ethers.BigNumber.from(0),
         ethers.BigNumber.from(0),
@@ -246,8 +246,8 @@ describe("CryptoWill tests", () => {
         .withArgs(NFT2.address, [3, 4], payee[2].address);
       const willNfts1 = await contract.willNFTs(payee[1].address, 0);
       const willNfts2 = await contract.willNFTs(payee[2].address, 1);
-      expect(willNfts1).to.be.eql([NFT1.address, ethers.BigNumber.from(0)]);
-      expect(willNfts2).to.be.eql([NFT2.address, ethers.BigNumber.from(4)]);
+      expect(willNfts1).to.deep.equal([NFT1.address, ethers.BigNumber.from(0)]);
+      expect(willNfts2).to.deep.equal([NFT2.address, ethers.BigNumber.from(4)]);
     });
     it("If owner does not approve the nft id the function should revert", async () => {
       await NFT1.approve(contract.address, 0);
