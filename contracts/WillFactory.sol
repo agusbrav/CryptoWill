@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.14;
 import "./Will.sol";
 
 /**
@@ -27,11 +27,11 @@ contract WillFactory {
         return willOwners[msg.sender];
     }
 
-    function checkWills(address _address) external view returns (address){
+    function checkWills(address _address) external view returns (address) {
         require(
             willOwners[_address] != address(0),
             "You do not have a deployed Will"
         );
-       return (willOwners[_address]);
+        return (willOwners[_address]);
     }
 }
