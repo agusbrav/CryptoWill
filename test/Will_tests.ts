@@ -170,8 +170,8 @@ describe("CryptoWill tests", () => {
       const balanceTT2 = await token1
         .connect(owner.address)
         .balanceOf(owner.address);
-      expect(await token1.totalSupply()).to.be.equal(balanceTT1);
-      expect(await token2.totalSupply()).to.be.equal(balanceTT2);
+      expect(await token1.totalSupply()).to.equal(balanceTT1);
+      expect(await token2.totalSupply()).to.equal(balanceTT2);
     });
     it("Owner should be able to load erc20 tokens to will", async () => {
       await token1.approve(contract.address, MAX_INT);
@@ -218,12 +218,12 @@ describe("CryptoWill tests", () => {
       }
     );
     it("Nfts should be owned by owner", async () => {
-      expect(await NFT1.balanceOf(owner.address)).to.be.equal(5);
-      expect(await NFT2.balanceOf(owner.address)).to.be.equal(5);
-      expect(await NFT1.ownerOf(0)).to.be.equal(owner.address);
-      expect(await NFT1.ownerOf(4)).to.be.equal(owner.address);
-      expect(await NFT2.ownerOf(0)).to.be.equal(owner.address);
-      expect(await NFT2.ownerOf(4)).to.be.equal(owner.address);
+      expect(await NFT1.balanceOf(owner.address)).to.equal(5);
+      expect(await NFT2.balanceOf(owner.address)).to.equal(5);
+      expect(await NFT1.ownerOf(0)).to.equal(owner.address);
+      expect(await NFT1.ownerOf(4)).to.equal(owner.address);
+      expect(await NFT2.ownerOf(0)).to.equal(owner.address);
+      expect(await NFT2.ownerOf(4)).to.equal(owner.address);
     });
     it("Owner should be able to load erc20 tokens to will and assign them to payees", async () => {
       await NFT1.approve(contract.address, 0);
@@ -412,16 +412,16 @@ describe("CryptoWill tests", () => {
             payee[1].address,
             ethers.BigNumber.from(500000000)
           );
-        expect(await token1.balanceOf(payee[1].address)).to.be.equal(
+        expect(await token1.balanceOf(payee[1].address)).to.equal(
           ethers.BigNumber.from(500000000)
         );
-        expect(await token1.balanceOf(owner.address)).to.be.equal(
+        expect(await token1.balanceOf(owner.address)).to.equal(
           ethers.BigNumber.from(500000000)
         );
-        expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+        expect(await token2.balanceOf(payee[1].address)).to.equal(
           ethers.BigNumber.from(500000000)
         );
-        expect(await token2.balanceOf(owner.address)).to.be.equal(
+        expect(await token2.balanceOf(owner.address)).to.equal(
           ethers.BigNumber.from(500000000)
         );
       });
@@ -467,7 +467,7 @@ describe("CryptoWill tests", () => {
         expect(tx2)
           .to.emit(contract, "PayeeChecked")
           .withArgs(payee[2].address);
-        expect(await executor.getBalance()).to.be.equal(
+        expect(await executor.getBalance()).to.equal(
           executorBalance.add(executorFee)
         );
       });
@@ -483,16 +483,16 @@ describe("CryptoWill tests", () => {
           .connect(owner)
           .transfer(external.address, await token2.balanceOf(owner.address));
         contract.connect(payee[1]).withdrawShares();
-        expect(await token1.balanceOf(payee[1].address)).to.be.equal(
+        expect(await token1.balanceOf(payee[1].address)).to.equal(
           ethers.BigNumber.from(0)
         );
-        expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+        expect(await token2.balanceOf(payee[1].address)).to.equal(
           ethers.BigNumber.from(0)
         );
-        expect(await token2.balanceOf(external.address)).to.be.equal(
+        expect(await token2.balanceOf(external.address)).to.equal(
           ethers.BigNumber.from(1000000000)
         );
-        expect(await token2.balanceOf(external.address)).to.be.equal(
+        expect(await token2.balanceOf(external.address)).to.equal(
           ethers.BigNumber.from(1000000000)
         );
       });
@@ -521,9 +521,9 @@ describe("CryptoWill tests", () => {
         expect(tx1)
           .to.emit(contract, "NFTWithdrawn")
           .withArgs(NFT1.address, payee[1].address, ethers.BigNumber.from(3));
-        expect(await NFT1.ownerOf(0)).to.be.equal(payee[1].address);
-        expect(await NFT1.ownerOf(3)).to.be.equal(payee[1].address);
-        expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+        expect(await NFT1.ownerOf(0)).to.equal(payee[1].address);
+        expect(await NFT1.ownerOf(3)).to.equal(payee[1].address);
+        expect(await NFT1.ownerOf(4)).to.equal(external.address);
       });
       it("Withdrawing with NFTs that dont belong to owner should delete them all and continue", async () => {
         await NFT1.connect(owner).transferFrom(
@@ -546,11 +546,11 @@ describe("CryptoWill tests", () => {
         const unlockTime = latestBlock + waitTime;
         await provider.send("evm_mine", [unlockTime]);
         await contract.connect(payee[1]).withdrawShares();
-        expect(await NFT1.ownerOf(0)).to.be.equal(external.address);
-        expect(await NFT1.ownerOf(1)).to.be.equal(payee[1].address);
-        expect(await NFT1.ownerOf(2)).to.be.equal(payee[1].address);
-        expect(await NFT1.ownerOf(3)).to.be.equal(external.address);
-        expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
+        expect(await NFT1.ownerOf(0)).to.equal(external.address);
+        expect(await NFT1.ownerOf(1)).to.equal(payee[1].address);
+        expect(await NFT1.ownerOf(2)).to.equal(payee[1].address);
+        expect(await NFT1.ownerOf(3)).to.equal(external.address);
+        expect(await NFT1.ownerOf(4)).to.equal(external.address);
       });
     });
     describe("Testing withdrawShares with ERC20 and ERC721 Tokens", () => {
@@ -625,41 +625,41 @@ describe("CryptoWill tests", () => {
         await contract.connect(payee[2]).withdrawShares();
         await contract.connect(payee[3]).withdrawShares();
         await contract.connect(payee[4]).withdrawShares();
-        expect(await NFT1.ownerOf(0)).to.be.equal(payee[1].address);
-        expect(await NFT1.ownerOf(1)).to.be.equal(external.address);
-        expect(await NFT1.ownerOf(2)).to.be.equal(payee[2].address);
-        expect(await NFT1.ownerOf(3)).to.be.equal(payee[2].address);
-        expect(await NFT1.ownerOf(4)).to.be.equal(external.address);
-        expect(await NFT2.ownerOf(0)).to.be.equal(external.address);
-        expect(await NFT2.ownerOf(1)).to.be.equal(payee[2].address);
-        expect(await NFT2.ownerOf(2)).to.be.equal(payee[3].address);
-        expect(await NFT2.ownerOf(3)).to.be.equal(external.address);
-        expect(await NFT2.ownerOf(4)).to.be.equal(payee[3].address);
-        expect(await executor.getBalance()).to.be.equal(
+        expect(await NFT1.ownerOf(0)).to.equal(payee[1].address);
+        expect(await NFT1.ownerOf(1)).to.equal(external.address);
+        expect(await NFT1.ownerOf(2)).to.equal(payee[2].address);
+        expect(await NFT1.ownerOf(3)).to.equal(payee[2].address);
+        expect(await NFT1.ownerOf(4)).to.equal(external.address);
+        expect(await NFT2.ownerOf(0)).to.equal(external.address);
+        expect(await NFT2.ownerOf(1)).to.equal(payee[2].address);
+        expect(await NFT2.ownerOf(2)).to.equal(payee[3].address);
+        expect(await NFT2.ownerOf(3)).to.equal(external.address);
+        expect(await NFT2.ownerOf(4)).to.equal(payee[3].address);
+        expect(await executor.getBalance()).to.equal(
           executorBalance.add(executorFee)
         );
-        expect(await token1.balanceOf(payee[1].address)).to.be.equal(
+        expect(await token1.balanceOf(payee[1].address)).to.equal(
           correspondingToken1
         );
-        expect(await token1.balanceOf(payee[2].address)).to.be.equal(
+        expect(await token1.balanceOf(payee[2].address)).to.equal(
           correspondingToken1
         );
-        expect(await token1.balanceOf(payee[3].address)).to.be.equal(
+        expect(await token1.balanceOf(payee[3].address)).to.equal(
           correspondingToken1
         );
-        expect(await token1.balanceOf(payee[4].address)).to.be.equal(
+        expect(await token1.balanceOf(payee[4].address)).to.equal(
           correspondingToken1
         );
-        expect(await token2.balanceOf(payee[1].address)).to.be.equal(
+        expect(await token2.balanceOf(payee[1].address)).to.equal(
           correspondingToken2
         );
-        expect(await token2.balanceOf(payee[2].address)).to.be.equal(
+        expect(await token2.balanceOf(payee[2].address)).to.equal(
           correspondingToken2
         );
-        expect(await token2.balanceOf(payee[3].address)).to.be.equal(
+        expect(await token2.balanceOf(payee[3].address)).to.equal(
           correspondingToken2
         );
-        expect(await token2.balanceOf(payee[4].address)).to.be.equal(
+        expect(await token2.balanceOf(payee[4].address)).to.equal(
           correspondingToken2
         );
       });
@@ -695,7 +695,7 @@ describe("CryptoWill tests", () => {
       const tx1 = await contract.connect(owner).revokeWill();
       const receiptTx1 = await tx1.wait();
       const gas = receiptTx1.gasUsed.mul(receiptTx1.effectiveGasPrice);
-      expect(await owner.getBalance()).to.be.equal(
+      expect(await owner.getBalance()).to.equal(
         balanceOwner.sub(gas).add(ethValue)
       );
     });
