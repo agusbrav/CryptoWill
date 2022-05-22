@@ -404,6 +404,7 @@ contract Will is AccessControl, ReentrancyGuard {
      */
     function withdrawShares() external onlyRole(PAYEE) {
         require(willManuscript.executed, "Will has not been executed yet");
+        require(payeesInWill[msg.sender], "You have already withdran");
         require(
             block.timestamp >= willManuscript.unlockTime,
             "Will hasnt been unlocked yet"
@@ -474,6 +475,7 @@ contract Will is AccessControl, ReentrancyGuard {
                 willManuscript.payees[_length - 1] = _payee;
                 willManuscript.payees.pop();
                 _length = willManuscript.payees.length;
+                payeesInWill[msg.sender] = false;
                 emit PayeeChecked(_payee);
                 renounceRole(PAYEE, _payee);
             }
