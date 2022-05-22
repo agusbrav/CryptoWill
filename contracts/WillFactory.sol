@@ -12,7 +12,6 @@ contract WillFactory {
 
     function createWillContract(address payable _lawyer, uint256 _lockTime)
         external
-        returns (address)
     {
         require(
             willOwners[msg.sender] == address(0),
@@ -24,7 +23,6 @@ contract WillFactory {
         Will will = new Will(payable(msg.sender), _lawyer, _lockTime);
         willOwners[msg.sender] = address(will);
         emit WillCreated(willOwners[msg.sender]);
-        return willOwners[msg.sender];
     }
 
     function checkWills(address _address) external view returns (address) {
