@@ -4,8 +4,6 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/presets/ERC721PresetMinterPauserAutoId.sol";
-import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetFixedSupply.sol";
 
 /**
  * @title Will Contract for Tokens and NFTs
@@ -133,8 +131,6 @@ contract Will is AccessControl, ReentrancyGuard {
         willManuscript.executed = false;
         _setupRole(OWNER, _testator);
         _setupRole(EXECUTOR, _executor);
-        _setRoleAdmin(EXECUTOR, OWNER);
-        _setRoleAdmin(PAYEE, OWNER);
     }
 
     /// The will ETH balance must be at least 0.2 ETH and have 1 payee in order to be active
@@ -217,7 +213,7 @@ contract Will is AccessControl, ReentrancyGuard {
             );
             payeesInWill[_payeesAdd[i]] = true;
             willManuscript.payees.push(_payeesAdd[i]);
-            grantRole(PAYEE, _payeesAdd[i]);
+            _grantRole(PAYEE, _payeesAdd[i]);
         }
         emit WillSetted(_payeesAdd);
     }
@@ -514,8 +510,8 @@ contract Will is AccessControl, ReentrancyGuard {
             revert("Cant be same executor");
         address _oldExecutor = willManuscript.executor;
         willManuscript.executor = _newExecutor;
-        revokeRole(EXECUTOR, _oldExecutor);
-        grantRole(EXECUTOR, willManuscript.executor);
+        _revokeRole(EXECUTOR, _oldExecutor);
+        _grantRole(EXECUTOR, willManuscript.executor);
         emit ChangedExecutor(_oldExecutor, _newExecutor);
     }
 
