@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { ERC20PresetFixedSupply } from "../typechain-types";
+import { ERC20PresetFixedSupply } from "../typechain-types/ERC20PresetFixedSupply";
 
 export const erc20MintToAddress = async (
   owner: SignerWithAddress

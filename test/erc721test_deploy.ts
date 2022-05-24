@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { ethers } from "hardhat";
-import { ERC721PresetMinterPauserAutoId } from "../typechain-types";
+import { ERC721PresetMinterPauserAutoId } from "../typechain-types/ERC721PresetMinterPauserAutoId";
 
 export const nftMintToAddress = async (
   owner: SignerWithAddress
