@@ -6,9 +6,11 @@ import {
   ERC721PresetMinterPauserAutoId,
   Will,
 } from "../typechain-types/";
-import { erc20MintToAddress } from "./erc20test_deploy";
-import { nftMintToAddress } from "./erc721test_deploy";
-import { randomSigners } from "./randomSign";
+import {
+  erc20MintToAddress,
+  nftMintToAddress,
+  randomSigners,
+} from "./utils.test";
 
 describe("CryptoWill tests", () => {
   let contract: Will;
