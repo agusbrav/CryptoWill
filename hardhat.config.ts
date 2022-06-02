@@ -1,14 +1,9 @@
-//import "@nomiclabs/hardhat-ethers";
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
-//import "@symfoni/hardhat-react";
-//import "@typechain/ethers-v5";
 import "@typechain/hardhat";
 import * as dotenv from "dotenv";
-//import "hardhat-deploy";
-//import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
-//import "hardhat-typechain";
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 import "./tasks/accounts";
