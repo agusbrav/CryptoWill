@@ -4,7 +4,7 @@
   <img 
     width="300"
     height="300"
-    src=".frontend/src/assets/images/Logo2.png?raw=true"
+    src="./frontend/src/assets/images/cw1.png"
   >
   <text
     # Crypto Will
