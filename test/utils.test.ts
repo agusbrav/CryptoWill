@@ -1,6 +1,6 @@
 import { Signer } from "@ethersproject/abstract-signer";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { ERC721PresetMinterPauserAutoId } from "../typechain-types";
 import { ERC20PresetFixedSupply } from "../typechain-types/";
 
@@ -55,4 +55,9 @@ export const nftMintToAddress = async (
     await NFT2.connect(owner).mint(owner.address);
   }
   return [NFT1, NFT2];
+};
+
+export const timeTravel = async (seconds: number) => {
+  await network.provider.send("evm_increaseTime", [seconds]);
+  await network.provider.send("evm_mine");
 };
