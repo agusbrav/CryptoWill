@@ -13,14 +13,12 @@
 
 ## Introduction
 
-Crypto Will its a project in development being built in the Ethereum network that aims to help people to lock assets (ETH, ERC20 and ERC721) and configure inheretance members that will be able to claim them once the conditions assigned by its owner are met.
-Anyone can create a Will from this contract and set its assets to be claimed by whoever you want to benefit from your will.
-
-This is my first time working with solidity and smart contracts :)
+Crypto Will its a project in development being built in the Ethereum network that aims to help people to approve assets (tokens) and configure inheretance members that will be able to claim them once the conditions assigned by its owner are met.
+Anyone can create a Will from this contract and set its assets to be claimed by whoever.
 
 ## Project Status
 
-The project is currently a work in progress. Will Factory and will contract basic functions are done and tested.
+The project is currently a work in progress. The `WillFactory` and `Will` contract basic functions are done and tested.
 
 ## Roadmap
 
